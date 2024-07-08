@@ -4,7 +4,7 @@ pub struct Dice;
 
 impl Dice {
     pub fn new() -> Self {
-        todo!();
+        Dice
     }
 }
 

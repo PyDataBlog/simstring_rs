@@ -2,5 +2,8 @@ mod character_ngrams;
 mod word_ngrams;
 
 pub trait FeatureExtractor {
-    // add code here
+    fn extract(&self, s: String) -> Vec<(&str, i32)>;
 }
+
+pub use character_ngrams::CharacterNGrams;
+pub use word_ngrams::WordNGrams;

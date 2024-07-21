@@ -3,6 +3,12 @@ use std::collections::HashSet;
 
 pub struct Cosine;
 
+impl Default for Cosine {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Cosine {
     pub fn new() -> Self {
         Cosine

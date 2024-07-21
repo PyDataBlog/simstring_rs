@@ -2,6 +2,12 @@ use super::SimilarityMeasure;
 
 pub struct ExactMatch;
 
+impl Default for ExactMatch {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ExactMatch {
     pub fn new() -> Self {
         ExactMatch

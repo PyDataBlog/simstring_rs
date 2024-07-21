@@ -2,6 +2,12 @@ use super::SimilarityMeasure;
 
 pub struct Jaccard;
 
+impl Default for Jaccard {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Jaccard {
     pub fn new() -> Self {
         Jaccard

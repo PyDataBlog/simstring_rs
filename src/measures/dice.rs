@@ -2,6 +2,12 @@ use super::SimilarityMeasure;
 
 pub struct Dice;
 
+impl Default for Dice {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Dice {
     pub fn new() -> Self {
         Dice

@@ -2,6 +2,12 @@ use super::SimilarityMeasure;
 
 pub struct Overlap;
 
+impl Default for Overlap {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Overlap {
     pub fn new() -> Self {
         Overlap

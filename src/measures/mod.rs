@@ -7,7 +7,7 @@ mod overlap;
 pub trait SimilarityMeasure {
     fn minimum_feature_size(&self, query_size: i64, alpha: f64) -> i64;
     fn maximum_feature_size(&self, query_size: i64, alpha: f64) -> i64;
-    fn similarity_score(&self, x: &Vec<i64>, y: &Vec<i64>) -> f64;
+    fn similarity_score(&self, x: &[i64], y: &[i64]) -> f64;
     fn minimum_overlap(&self, query_size: i64, candidate_size: i64, alpha: f64) -> i64;
 }
 

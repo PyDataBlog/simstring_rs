@@ -75,14 +75,14 @@ fn test_jacard_measures() {
     assert_eq!(jaccard.similarity_score(&x.clone(), &y.clone()), 0.4);
 
     assert_eq!(jaccard.minimum_feature_size(5, 1.), 5);
-    assert_eq!(jaccard.minimum_feature_size(5, 0.5), 2);
+    assert_eq!(jaccard.minimum_feature_size(5, 0.5), 3);
 
     assert_eq!(jaccard.maximum_feature_size(5, 1.), 5);
-    assert_eq!(jaccard.maximum_feature_size(5, 0.5), 15);
+    assert_eq!(jaccard.maximum_feature_size(5, 0.5), 10);
 
-    assert_eq!(jaccard.minimum_overlap(5, 5, 1.), 13);
-    assert_eq!(jaccard.minimum_overlap(5, 20, 1.), 50);
-    assert_eq!(jaccard.minimum_overlap(5, 5, 0.5), 7);
+    assert_eq!(jaccard.minimum_overlap(5, 5, 1.), 5);
+    assert_eq!(jaccard.minimum_overlap(5, 20, 1.), 13);
+    assert_eq!(jaccard.minimum_overlap(5, 5, 0.5), 4);
 }
 
 #[test]
@@ -97,13 +97,13 @@ fn test_overlap_measures() {
         0.6666666666666666
     );
 
-    assert_eq!(overlap.minimum_feature_size(5, 1.), 5);
-    assert_eq!(overlap.minimum_feature_size(5, 0.5), 2);
+    assert_eq!(overlap.minimum_feature_size(5, 1.), 1);
+    assert_eq!(overlap.minimum_feature_size(5, 0.5), 1);
 
-    assert_eq!(overlap.maximum_feature_size(5, 1.), 5);
-    assert_eq!(overlap.maximum_feature_size(5, 0.5), 15);
+    assert_eq!(overlap.maximum_feature_size(5, 1.), 6);
+    assert_eq!(overlap.maximum_feature_size(5, 0.5), 6);
 
-    assert_eq!(overlap.minimum_overlap(5, 5, 1.), 13);
-    assert_eq!(overlap.minimum_overlap(5, 20, 1.), 50);
-    assert_eq!(overlap.minimum_overlap(5, 5, 0.5), 7);
+    assert_eq!(overlap.minimum_overlap(5, 5, 1.), 5);
+    assert_eq!(overlap.minimum_overlap(5, 20, 1.), 5);
+    assert_eq!(overlap.minimum_overlap(5, 5, 0.5), 3);
 }

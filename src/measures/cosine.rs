@@ -24,7 +24,7 @@ impl SimilarityMeasure for Cosine {
         (query_size as f64 / (alpha * alpha)).floor() as i64
     }
 
-    fn similarity_score(&self, x: &Vec<i64>, y: &Vec<i64>) -> f64 {
+    fn similarity_score(&self, x: &[i64], y: &[i64]) -> f64 {
         let set_x: HashSet<_> = x.iter().collect();
         let set_y: HashSet<_> = y.iter().collect();
         let intersection_count = set_x.intersection(&set_y).count() as f64;

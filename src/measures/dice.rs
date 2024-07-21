@@ -24,7 +24,7 @@ impl SimilarityMeasure for Dice {
         (((2. - alpha) / alpha) * query_size as f64).floor() as i64
     }
 
-    fn similarity_score(&self, x: &Vec<i64>, y: &Vec<i64>) -> f64 {
+    fn similarity_score(&self, x: &[i64], y: &[i64]) -> f64 {
         let set_x: HashSet<_> = x.iter().collect();
         let set_y: HashSet<_> = y.iter().collect();
 

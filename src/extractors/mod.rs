@@ -2,7 +2,7 @@ mod character_ngrams;
 mod word_ngrams;
 
 pub trait FeatureExtractor {
-    fn extract(&self, s: String) -> Vec<(&str, i32)>;
+    fn extract(&self, s: &str) -> Vec<(String, i32)>;
 }
 
 pub use character_ngrams::CharacterNGrams;

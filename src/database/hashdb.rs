@@ -1,39 +1,105 @@
-use crate::FeatureExtractor;
+use crate::{FeatureExtractor, SimStringDB};
 use std::collections::{HashMap, HashSet};
-use std::hash::Hash;
 
-pub struct HashDB<T1, T2, T3, T4, T5>
+pub struct HashDB<TExtractor>
 where
-    T1: FeatureExtractor,
-    T2: Eq + Hash + Clone,
-    T3: HashMap<usize, HashSet<T2>>,
-    T4: HashMap<usize, HashMap<(T2, i64), HashSet<T2>>>,
-    T5: HashMap<usize, HashMap<(T2, i64), HashSet<T2>>>,
+    TExtractor: FeatureExtractor,
 {
-    feature_extractor: T1,
-    string_collection: Vec<T2>,
-    string_size_map: T3,
-    string_feature_map: T4,
-    lookup_cache: T5,
+    pub feature_extractor: TExtractor,
+    pub string_collection: Vec<String>,
+    pub string_size_map: HashMap<usize, HashSet<String>>,
+    pub string_feature_map: HashMap<usize, HashMap<(String, i32), HashSet<String>>>,
+    pub lookup_cache: HashMap<(usize, (String, i32)), HashSet<String>>,
 }
 
-impl<T1, T2, T3, T4, T5> SimStringDB for HashDB<T1, T2, T3, T4, T5>
+impl<TExtractor> HashDB<TExtractor>
 where
-    T1: FeatureExtractor,
-    T2: Eq + Hash + Clone,
-    T3: HashMap<usize, HashSet<T2>>,
-    T4: HashMap<usize, HashMap<(T2, i64), HashSet<T2>>>,
-    T5: HashMap<usize, HashMap<(T2, i64), HashSet<T2>>>,
+    TExtractor: FeatureExtractor,
 {
+    pub fn new(feature_extractor: TExtractor) -> Self {
+        HashDB {
+            feature_extractor,
+            string_collection: Vec::new(),
+            string_size_map: HashMap::new(),
+            string_feature_map: HashMap::new(),
+            lookup_cache: HashMap::new(),
+        }
+    }
+
+    pub fn lookup_feature_set_by_size_feature(
+        &mut self,
+        size: usize,
+        feature: &(String, i32),
+    ) -> &HashSet<String> {
+        let cache_key = (size, feature.clone());
+
+        self.lookup_cache
+            .entry(cache_key.clone())
+            .or_insert_with(|| {
+                // If not in cache, retrieve from string_feature_map or return an empty set
+                self.string_feature_map
+                    .get(&size)
+                    .and_then(|feature_map| feature_map.get(feature))
+                    .cloned()
+                    .unwrap_or_else(HashSet::new)
+            })
+    }
+}
+
+impl<TExtractor> SimStringDB for HashDB<TExtractor>
+where
+    TExtractor: FeatureExtractor,
+{
+    fn insert(&mut self, s: String) {
+        // Add the string to the collection
+        self.string_collection.push(s.clone());
+
+        // Extract features from the string
+        let features = self.feature_extractor.extract(&s);
+
+        // Determine the size (number of features)
+        let size = features.len();
+
+        // Update string_size_map
+        self.string_size_map
+            .entry(size)
+            .or_default()
+            .insert(s.clone());
+
+        // Update string_feature_map
+        let feature_map = self.string_feature_map.entry(size).or_default();
+
+        for (feature, count) in features {
+            let key = (feature.clone(), count);
+
+            feature_map.entry(key).or_default().insert(s.clone());
+        }
+    }
+
     fn describe_collection(&self) -> (usize, f64, usize) {
         let total_collection = self.string_collection.len();
-        let n: Vec<usize> = self.string_size_map.keys().cloned().collect();
-        let avg_size_ngrams = if n.is_empty() {
+
+        let total_sizes: usize = self
+            .string_size_map
+            .iter()
+            .map(|(size, strings)| size * strings.len())
+            .sum();
+        let total_strings: usize = self
+            .string_size_map
+            .values()
+            .map(|strings| strings.len())
+            .sum();
+        let avg_size_ngrams = if total_strings == 0 {
             0.0
         } else {
-            n.iter().sum::<usize>() as f64 / n.len() as f64
+            total_sizes as f64 / total_strings as f64
         };
-        let total_ngrams = self.string_feature_map.values().map(|map| map.len()).sum();
+
+        let total_ngrams: usize = self
+            .string_feature_map
+            .values()
+            .map(|feature_map| feature_map.len())
+            .sum();
 
         (total_collection, avg_size_ngrams, total_ngrams)
     }

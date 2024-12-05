@@ -1,3 +1,4 @@
+use crate::SimStringDB;
 use std::collections::HashSet;
 
 use super::SimilarityMeasure;
@@ -21,7 +22,7 @@ impl SimilarityMeasure for Jaccard {
         (alpha * query_size as f64).ceil() as i64
     }
 
-    fn maximum_feature_size(&self, query_size: i64, alpha: f64) -> i64 {
+    fn maximum_feature_size(&self, _db: &impl SimStringDB, query_size: i64, alpha: f64) -> i64 {
         (query_size as f64 / alpha).floor() as i64
     }
 

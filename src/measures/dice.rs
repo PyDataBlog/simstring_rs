@@ -1,4 +1,5 @@
 use super::SimilarityMeasure;
+use crate::SimStringDB;
 use std::collections::HashSet;
 
 pub struct Dice;
@@ -20,7 +21,7 @@ impl SimilarityMeasure for Dice {
         ((alpha / (2. - alpha)) * query_size as f64).ceil() as i64
     }
 
-    fn maximum_feature_size(&self, query_size: i64, alpha: f64) -> i64 {
+    fn maximum_feature_size(&self, _db: &impl SimStringDB, query_size: i64, alpha: f64) -> i64 {
         (((2. - alpha) / alpha) * query_size as f64).floor() as i64
     }
 
@@ -36,6 +37,6 @@ impl SimilarityMeasure for Dice {
     }
 
     fn minimum_overlap(&self, query_size: i64, candidate_size: i64, alpha: f64) -> i64 {
-        (0.5 * alpha * query_size as f64 * candidate_size as f64).ceil() as i64
+        (0.5 * alpha * (query_size as f64 + candidate_size as f64)).ceil() as i64
     }
 }

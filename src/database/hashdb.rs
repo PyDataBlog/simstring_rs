@@ -50,6 +50,10 @@ impl<TExtractor> SimStringDB for HashDB<TExtractor>
 where
     TExtractor: FeatureExtractor,
 {
+    fn get_max_feature_size(&self) -> usize {
+        *self.string_feature_map.keys().max().unwrap_or(&0)
+    }
+
     fn insert(&mut self, s: String) {
         // Add the string to the collection
         self.string_collection.push(s.clone());

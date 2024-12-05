@@ -1,4 +1,5 @@
 use super::SimilarityMeasure;
+use crate::SimStringDB;
 use std::collections::HashSet;
 
 pub struct Cosine;
@@ -20,7 +21,7 @@ impl SimilarityMeasure for Cosine {
         (alpha * alpha * query_size as f64).ceil() as i64
     }
 
-    fn maximum_feature_size(&self, query_size: i64, alpha: f64) -> i64 {
+    fn maximum_feature_size(&self, _db: &impl SimStringDB, query_size: i64, alpha: f64) -> i64 {
         (query_size as f64 / (alpha * alpha)).floor() as i64
     }
 

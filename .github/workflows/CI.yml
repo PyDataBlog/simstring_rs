@@ -46,11 +46,9 @@ jobs:
           target: ${{ matrix.target }}
           components: rustfmt, clippy
 
-      - name: Install cross-compilation tools (Linux ARM64)
+      - name: Install cross
         if: matrix.target == 'aarch64-unknown-linux-gnu'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y gcc-aarch64-linux-gnu
+        run: cargo install cross
 
       - name: Set up cargo cache
         uses: actions/cache@v3
@@ -68,13 +66,28 @@ jobs:
         run: cargo fmt --all -- --check
 
       - name: Run clippy
+        if: matrix.target != 'aarch64-unknown-linux-gnu'
         run: cargo clippy --target ${{ matrix.target }} -- -D warnings
 
+      - name: Run clippy (cross)
+        if: matrix.target == 'aarch64-unknown-linux-gnu'
+        run: cross clippy --target ${{ matrix.target }} -- -D warnings
+
       - name: Run tests
+        if: matrix.target != 'aarch64-unknown-linux-gnu'
         run: cargo test --target ${{ matrix.target }} --verbose
 
+      - name: Run tests (cross)
+        if: matrix.target == 'aarch64-unknown-linux-gnu'
+        run: cross test --target ${{ matrix.target }} --verbose
+
       - name: Build
+        if: matrix.target != 'aarch64-unknown-linux-gnu'
         run: cargo build --target ${{ matrix.target }} --verbose
+
+      - name: Build (cross)
+        if: matrix.target == 'aarch64-unknown-linux-gnu'
+        run: cross build --target ${{ matrix.target }} --verbose
 
       # Documentation check
       - name: Check documentation

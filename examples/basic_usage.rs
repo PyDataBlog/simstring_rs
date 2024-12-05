@@ -3,7 +3,7 @@ use simstring_rs::extractors::{CharacterNGrams, FeatureExtractor};
 use simstring_rs::measures::Cosine;
 
 fn main() {
-    let cs = Cosine::new();
+    let _cs = Cosine::new();
 
     let feature_extractor = CharacterNGrams {
         n: 3,

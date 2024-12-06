@@ -1,6 +1,6 @@
-use simstring_rs::database::{HashDB, SimStringDB};
-use simstring_rs::extractors::{CharacterNGrams, FeatureExtractor};
-use simstring_rs::measures::Cosine;
+use simstring_rust::database::{HashDB, SimStringDB};
+use simstring_rust::extractors::{CharacterNGrams, FeatureExtractor};
+use simstring_rust::measures::Cosine;
 
 fn main() {
     let _cs = Cosine::new();

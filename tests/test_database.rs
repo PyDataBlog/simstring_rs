@@ -1,5 +1,5 @@
-use simstring_rs::database::{HashDB, SimStringDB};
-use simstring_rs::extractors::{CharacterNGrams, FeatureExtractor, WordNGrams};
+use simstring_rust::database::{HashDB, SimStringDB};
+use simstring_rust::extractors::{CharacterNGrams, FeatureExtractor, WordNGrams};
 use std::collections::{HashMap, HashSet};
 
 mod hashdb_tests {

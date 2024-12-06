@@ -1,6 +1,6 @@
-use simstring_rs::database::{HashDB, SimStringDB};
-use simstring_rs::extractors::CharacterNGrams;
-use simstring_rs::measures::{Cosine, Dice, ExactMatch, Jaccard, Overlap, SimilarityMeasure};
+use simstring_rust::database::{HashDB, SimStringDB};
+use simstring_rust::extractors::CharacterNGrams;
+use simstring_rust::measures::{Cosine, Dice, ExactMatch, Jaccard, Overlap, SimilarityMeasure};
 
 #[cfg(test)]
 mod tests {

@@ -1,4 +1,4 @@
-use simstring_rs::extractors::{CharacterNGrams, FeatureExtractor, WordNGrams};
+use simstring_rust::extractors::{CharacterNGrams, FeatureExtractor, WordNGrams};
 
 mod character_ngrams_tests {
     use super::*;

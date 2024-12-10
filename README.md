@@ -1,5 +1,9 @@
 # simstring_rust
 
+[![Build Status](https://github.com/PyDataBlog/simstring_rs/actions/workflows/CI.yml/badge.svg)](https://github.com/PyDataBlog/simstring_rs/actions)
+[![Crates.io](https://img.shields.io/crates/v/simstring_rust.svg)](https://crates.io/crates/simstring_rust)
+[![Documentation](https://docs.rs/simstring_rust/badge.svg)](https://docs.rs/simstring_rust)
+[![Rust](https://img.shields.io/badge/rust-1.63.0%2B-blue.svg?maxAge=3600)](https://github.com/PyDataBlog/simstring_rs)
 A native Rust implementation of the CPMerge algorithm, designed for approximate string matching. This crate is particularly useful for natural language processing tasks that require the retrieval of strings/texts from very large corpora (big amounts of texts). Currently, this crate supports both character and word-based N-grams feature generation, with plans to allow custom user-defined feature generation methods.
 
 ## Features
@@ -9,7 +13,6 @@ A native Rust implementation of the CPMerge algorithm, designed for approximate 
 - ✅ Support for Unicode
 - [ ] Support for building databases directly from text files
 - [ ] Mecab-based tokenizer support
-- [ ] Support for persistent databases like MongoDB
 
 ## Supported String Similarity Measures
 
@@ -25,7 +28,7 @@ Add `simstring_rust` to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-simstring_rust = "0.1.0"
+simstring_rust = "0.1.0" # change version accordingly
 ```
 
 For the latest features, you can add the master branch by specifying the Git repository:

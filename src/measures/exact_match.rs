@@ -22,11 +22,16 @@ impl SimilarityMeasure for ExactMatch {
         query_size
     }
 
-    fn maximum_feature_size(&self, _db: &impl SimStringDB, query_size: i64, _alpha: f64) -> i64 {
+    fn maximum_feature_size<TMeasure: SimilarityMeasure>(
+        &self,
+        _db: &impl SimStringDB<TMeasure>,
+        query_size: i64,
+        _alpha: f64,
+    ) -> i64 {
         query_size
     }
 
-    fn similarity_score(&self, x: &[i64], y: &[i64]) -> f64 {
+    fn similarity_score(&self, x: &[(String, i32)], y: &[(String, i32)]) -> f64 {
         let set_x: HashSet<_> = x.iter().collect();
         let set_y: HashSet<_> = y.iter().collect();
 

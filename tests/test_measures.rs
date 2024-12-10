@@ -1,4 +1,4 @@
-use simstring_rust::database::{HashDB, SimStringDB};
+use simstring_rust::database::HashDB;
 use simstring_rust::extractors::CharacterNGrams;
 use simstring_rust::measures::{Cosine, Dice, ExactMatch, Jaccard, Overlap, SimilarityMeasure};
 
@@ -8,8 +8,17 @@ mod tests {
 
     #[test]
     fn test_similarity_scores() {
-        let x = vec![1, 2, 3];
-        let y = vec![1, 2, 4, 5];
+        let x = vec![
+            ("feature1".to_string(), 1),
+            ("feature2".to_string(), 1),
+            ("feature3".to_string(), 1),
+        ];
+        let y = vec![
+            ("feature1".to_string(), 1),
+            ("feature2".to_string(), 1),
+            ("feature3".to_string(), 2),
+            ("feature4".to_string(), 1),
+        ];
 
         // Dice Similarity
         let dice = Dice::new();
@@ -133,7 +142,8 @@ mod tests {
             n: 3,
             padder: " ".to_string(),
         };
-        let mut db = HashDB::new(feature_extractor);
+        let measure = Cosine {};
+        let mut db = HashDB::new(feature_extractor, measure);
 
         db.insert("foo".to_string());
         db.insert("bar".to_string());

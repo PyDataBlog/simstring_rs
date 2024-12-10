@@ -95,6 +95,26 @@ jobs:
       - name: Check documentation
         run: cargo doc --no-deps --document-private-items
 
+      # Generate coverage report using grcov
+      - name: Install grcov
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          rustup component add llvm-tools-preview
+          cargo install grcov
+
+      - name: Generate coverage report
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          grcov . -s . --binary-path ./target/debug/ -t lcov --branch --ignore-not-existing -o ./coverage.lcov
+
+      # Upload coverage report to Codecov
+      - name: Upload coverage to Codecov
+        if: matrix.os == 'ubuntu-latest'
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          file: ./coverage.lcov
+
   # Publish to crates.io on new tags
   publish:
     name: Publish to crates.io

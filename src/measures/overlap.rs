@@ -22,12 +22,17 @@ impl SimilarityMeasure for Overlap {
         1
     }
 
-    fn maximum_feature_size(&self, db: &impl SimStringDB, _query_size: i64, _alpha: f64) -> i64 {
+    fn maximum_feature_size<TMeasure: SimilarityMeasure>(
+        &self,
+        db: &impl SimStringDB<TMeasure>,
+        _query_size: i64,
+        _alpha: f64,
+    ) -> i64 {
         let max_size = db.get_max_feature_size();
         min(i64::MAX, max_size as i64)
     }
 
-    fn similarity_score(&self, x: &[i64], y: &[i64]) -> f64 {
+    fn similarity_score(&self, x: &[(String, i32)], y: &[(String, i32)]) -> f64 {
         let set_x: HashSet<_> = x.iter().collect();
         let set_y: HashSet<_> = y.iter().collect();
 

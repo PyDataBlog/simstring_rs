@@ -239,4 +239,3 @@ where
         self.get_max_feature_size()
     }
 }
-

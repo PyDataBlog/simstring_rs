@@ -43,4 +43,3 @@ impl SimilarityMeasure for Cosine {
         (alpha * (query_size as f64 * candidate_size as f64).sqrt()).ceil() as i64
     }
 }
-

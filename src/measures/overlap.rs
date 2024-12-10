@@ -29,7 +29,7 @@ impl SimilarityMeasure for Overlap {
         _alpha: f64,
     ) -> i64 {
         let max_size = db.get_max_feature_size();
-        min(i64::MAX, max_size as i64)
+        min(i64::MAX, max_size)
     }
 
     fn similarity_score(&self, x: &[(String, i32)], y: &[(String, i32)]) -> f64 {

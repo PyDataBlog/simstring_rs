@@ -191,19 +191,20 @@ where
     }
 
     pub fn describe_collection(&self) -> (usize, f64, usize) {
-        // Total number of strings in the collection
         let total_collection = self.string_collection.len();
 
-        // Average size of n-gram features
-        let n = self.string_size_map.keys().collect::<Vec<&i64>>();
-        let sum_n: i64 = n.iter().copied().sum();
-        let avg_size_ngrams = if !n.is_empty() {
-            sum_n as f64 / n.len() as f64
+        // Calculate average by looking at each string's size
+        let avg_size_ngrams = if !self.string_collection.is_empty() {
+            let sum: usize = self
+                .string_collection
+                .iter()
+                .map(|s| self.feature_extractor.extract(s).len())
+                .sum();
+            sum as f64 / total_collection as f64
         } else {
             0.0
         };
 
-        // Total number of n-gram features
         let total_ngrams: usize = self
             .string_feature_map
             .values()

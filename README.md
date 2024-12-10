@@ -4,6 +4,7 @@
 [![Crates.io](https://img.shields.io/crates/v/simstring_rust.svg)](https://crates.io/crates/simstring_rust)
 [![Documentation](https://docs.rs/simstring_rust/badge.svg)](https://docs.rs/simstring_rust)
 [![Rust](https://img.shields.io/badge/rust-1.63.0%2B-blue.svg?maxAge=3600)](https://github.com/PyDataBlog/simstring_rs)
+
 A native Rust implementation of the CPMerge algorithm, designed for approximate string matching. This crate is particularly useful for natural language processing tasks that require the retrieval of strings/texts from very large corpora (big amounts of texts). Currently, this crate supports both character and word-based N-grams feature generation, with plans to allow custom user-defined feature generation methods.
 
 ## Features

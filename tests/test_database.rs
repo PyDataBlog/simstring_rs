@@ -292,13 +292,13 @@ mod hashdb_tests {
         let (total_collection, avg_size_ngrams, total_ngrams) = db.describe_collection();
 
         assert_eq!(total_collection, 3);
-        //// TODO: Why does this change values to 4.33 instead of 4.5 before the refactor?? Bug??
-        //let size_foo = db.feature_extractor.extract("foo").len();
-        //let size_bar = db.feature_extractor.extract("bar").len();
-        //let size_fooo = db.feature_extractor.extract("fooo").len();
-        //let expected_avg_size = (size_foo + size_bar + size_fooo) as f64 / 3.0;
-        //assert_eq!(avg_size_ngrams, expected_avg_size);
-        //
+        let size_foo = db.feature_extractor.extract("foo").len();
+        let size_bar = db.feature_extractor.extract("bar").len();
+        let size_fooo = db.feature_extractor.extract("fooo").len();
+
+        let expected_avg_size = (size_foo + size_bar + size_fooo) as f64 / 3.0;
+        assert_eq!(avg_size_ngrams, expected_avg_size);
+
         // Manually calculate total n-grams
         let total_ngrams_expected: usize = db
             .string_feature_map

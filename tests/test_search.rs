@@ -213,7 +213,7 @@ mod test_search {
 
         db.insert("foo".to_string());
 
-        // // Test threshold = 0.0 *TODO: Investigate if this is a bug*
+        // // Test threshold = 0.0 * FIX: Account non zero alphas
         // let results_0 = db.search("bar", 0.0);
         // assert!(results_0.len() <= 1);
 

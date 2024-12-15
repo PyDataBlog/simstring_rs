@@ -1,24 +1,29 @@
-use crate::{FeatureExtractor, SimStringDB};
+use crate::search::SearchResult;
+use crate::{FeatureExtractor, SimStringDB, SimilarityMeasure};
 use std::collections::{HashMap, HashSet};
 
-pub struct HashDB<TExtractor>
+pub struct HashDB<TExtractor, TMeasure>
 where
     TExtractor: FeatureExtractor,
+    TMeasure: SimilarityMeasure,
 {
     pub feature_extractor: TExtractor,
+    pub measure: TMeasure,
     pub string_collection: Vec<String>,
-    pub string_size_map: HashMap<usize, HashSet<String>>,
-    pub string_feature_map: HashMap<usize, HashMap<(String, i32), HashSet<String>>>,
-    pub lookup_cache: HashMap<(usize, (String, i32)), HashSet<String>>,
+    pub string_size_map: HashMap<i64, HashSet<String>>,
+    pub string_feature_map: HashMap<i64, HashMap<(String, i32), HashSet<String>>>,
+    pub lookup_cache: HashMap<(i64, (String, i32)), HashSet<String>>,
 }
 
-impl<TExtractor> HashDB<TExtractor>
+impl<TExtractor, TMeasure> HashDB<TExtractor, TMeasure>
 where
     TExtractor: FeatureExtractor,
+    TMeasure: SimilarityMeasure,
 {
-    pub fn new(feature_extractor: TExtractor) -> Self {
+    pub fn new(feature_extractor: TExtractor, measure: TMeasure) -> Self {
         HashDB {
             feature_extractor,
+            measure,
             string_collection: Vec::new(),
             string_size_map: HashMap::new(),
             string_feature_map: HashMap::new(),
@@ -26,77 +31,178 @@ where
         }
     }
 
-    pub fn lookup_feature_set_by_size_feature(
-        &mut self,
-        size: usize,
-        feature: &(String, i32),
-    ) -> &HashSet<String> {
-        let cache_key = (size, feature.clone());
-
-        self.lookup_cache
-            .entry(cache_key.clone())
-            .or_insert_with(|| {
-                // If not in cache, retrieve from string_feature_map or return an empty set
-                self.string_feature_map
-                    .get(&size)
-                    .and_then(|feature_map| feature_map.get(feature))
-                    .cloned()
-                    .unwrap_or_else(HashSet::new)
-            })
-    }
-}
-
-impl<TExtractor> SimStringDB for HashDB<TExtractor>
-where
-    TExtractor: FeatureExtractor,
-{
-    fn get_max_feature_size(&self) -> usize {
-        *self.string_feature_map.keys().max().unwrap_or(&0)
-    }
-
-    fn insert(&mut self, s: String) {
-        // Add the string to the collection
+    pub fn insert(&mut self, s: String) {
         self.string_collection.push(s.clone());
-
-        // Extract features from the string
         let features = self.feature_extractor.extract(&s);
+        let feature_size = features.len() as i64;
 
-        // Determine the size (number of features)
-        let size = features.len();
-
-        // Update string_size_map
         self.string_size_map
-            .entry(size)
+            .entry(feature_size)
             .or_default()
             .insert(s.clone());
 
-        // Update string_feature_map
-        let feature_map = self.string_feature_map.entry(size).or_default();
+        let feature_map = self.string_feature_map.entry(feature_size).or_default();
 
-        for (feature, count) in features {
-            let key = (feature.clone(), count);
-
-            feature_map.entry(key).or_default().insert(s.clone());
+        for feature in &features {
+            feature_map
+                .entry(feature.clone())
+                .or_default()
+                .insert(s.clone());
         }
     }
 
-    fn describe_collection(&self) -> (usize, f64, usize) {
+    pub fn search(&mut self, query: &str, alpha: f64) -> Vec<SearchResult<String>> {
+        // 1. Extract features from the query string
+        let features = self.feature_extractor.extract(query);
+        let query_size = features.len() as i64;
+
+        // 2. Determine minimum and maximum feature sizes
+        let min_size = self.measure.minimum_feature_size(query_size, alpha);
+        let max_size = self.measure.maximum_feature_size(self, query_size, alpha);
+
+        let mut results = Vec::new();
+
+        // 3. Iterate over candidate sizes
+        for candidate_size in min_size..=max_size {
+            let tau = self
+                .measure
+                .minimum_overlap(query_size, candidate_size, alpha);
+
+            // 4. Perform overlap join
+            let candidates = self.overlap_join(&features, tau, candidate_size);
+            results.extend(candidates);
+        }
+
+        // 5. Rank and return the results
+        self.rank_search_results(query, results)
+    }
+
+    fn overlap_join(
+        &mut self,
+        features: &[(String, i32)],
+        tau: i64,
+        candidate_size: i64,
+    ) -> Vec<String> {
+        let query_len = features.len() as i64;
+
+        // Sort features based on the frequency in the database
+        let mut sorted_features = features.to_vec();
+        sorted_features.sort_by_key(|feature| {
+            self.lookup_feature_set_by_size_feature(candidate_size, feature)
+                .len()
+        });
+
+        let mut candidate_match_counts: HashMap<String, i64> = HashMap::new();
+
+        let feature_slice_index = query_len - tau + 1;
+        let focus_features = if feature_slice_index <= 0 {
+            &sorted_features[..]
+        } else {
+            &sorted_features[..(feature_slice_index as usize)]
+        };
+
+        // First phase: count feature occurrences
+        for feature in focus_features {
+            let candidates = self.lookup_feature_set_by_size_feature(candidate_size, feature);
+            for candidate in candidates {
+                *candidate_match_counts.entry(candidate.clone()).or_insert(0) += 1;
+            }
+        }
+
+        let mut results = Vec::new();
+
+        // Second phase: verify candidates
+        for (candidate, mut match_count) in candidate_match_counts {
+            let mut idx = feature_slice_index.max(0) as usize;
+
+            while idx < sorted_features.len() {
+                let feature = &sorted_features[idx];
+                idx += 1;
+
+                if self
+                    .lookup_feature_set_by_size_feature(candidate_size, feature)
+                    .contains(&candidate)
+                {
+                    match_count += 1;
+                }
+
+                if match_count >= tau {
+                    results.push(candidate.clone());
+                    break;
+                }
+
+                let remaining = (sorted_features.len() as i64) - (idx as i64);
+                if match_count + remaining < tau {
+                    break;
+                }
+            }
+        }
+
+        results
+    }
+
+    pub fn lookup_feature_set_by_size_feature(
+        &mut self,
+        size: i64,
+        feature: &(String, i32),
+    ) -> &HashSet<String> {
+        let key = (size, feature.clone());
+        if !self.lookup_cache.contains_key(&key) {
+            let result = self
+                .string_feature_map
+                .get(&size)
+                .and_then(|feature_map| feature_map.get(feature))
+                .cloned()
+                .unwrap_or_default();
+            self.lookup_cache.insert(key.clone(), result);
+        }
+        self.lookup_cache.get(&key).unwrap()
+    }
+
+    fn rank_search_results(
+        &self,
+        query: &str,
+        candidates: Vec<String>,
+    ) -> Vec<SearchResult<String>> {
+        let query_features = self.feature_extractor.extract(query);
+
+        let mut results = candidates
+            .into_iter()
+            .map(|candidate| {
+                let candidate_features = self.feature_extractor.extract(&candidate);
+                let score = self
+                    .measure
+                    .similarity_score(&query_features, &candidate_features);
+                SearchResult {
+                    value: candidate,
+                    score,
+                }
+            })
+            .collect::<Vec<_>>();
+
+        // Sort results by similarity score in descending order
+        results.sort_by(|a, b| {
+            b.score
+                .partial_cmp(&a.score)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
+
+        results
+    }
+
+    pub fn describe_collection(&self) -> (usize, f64, usize) {
         let total_collection = self.string_collection.len();
 
-        let total_sizes: usize = self
-            .string_size_map
-            .iter()
-            .map(|(size, strings)| size * strings.len())
-            .sum();
-        let total_strings: usize = self
-            .string_size_map
-            .values()
-            .map(|strings| strings.len())
-            .sum();
-        let avg_size_ngrams = if total_strings == 0 {
-            0.0
+        // Calculate average by looking at each string's size
+        let avg_size_ngrams = if !self.string_collection.is_empty() {
+            let sum: usize = self
+                .string_collection
+                .iter()
+                .map(|s| self.feature_extractor.extract(s).len())
+                .sum();
+            sum as f64 / total_collection as f64
         } else {
-            total_sizes as f64 / total_strings as f64
+            0.0
         };
 
         let total_ngrams: usize = self
@@ -106,5 +212,31 @@ where
             .sum();
 
         (total_collection, avg_size_ngrams, total_ngrams)
+    }
+
+    pub fn get_max_feature_size(&self) -> i64 {
+        *self.string_size_map.keys().max().unwrap_or(&0)
+    }
+}
+
+impl<TExtractor, TMeasure> SimStringDB<TMeasure> for HashDB<TExtractor, TMeasure>
+where
+    TExtractor: FeatureExtractor,
+    TMeasure: SimilarityMeasure,
+{
+    fn insert(&mut self, s: String) {
+        self.insert(s);
+    }
+
+    fn search(&mut self, query: &str, alpha: f64) -> Vec<SearchResult<String>> {
+        self.search(query, alpha)
+    }
+
+    fn describe_collection(&self) -> (usize, f64, usize) {
+        self.describe_collection()
+    }
+
+    fn get_max_feature_size(&self) -> i64 {
+        self.get_max_feature_size()
     }
 }

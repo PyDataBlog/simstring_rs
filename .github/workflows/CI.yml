@@ -95,6 +95,9 @@ jobs:
       - name: Check documentation
         run: cargo doc --no-deps --document-private-items
 
+      - name: Run benchmarks
+        run: cargo bench --verbose
+
   # Publish to crates.io on new tags
   publish:
     name: Publish to crates.io

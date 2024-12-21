@@ -17,7 +17,7 @@ for n in "${ngram_sizes[@]}"; do
         start_time=$(date +%s%N)
 
         # Build the Simstring database with the current n-gram size and markers
-        simstring -b -n "$n" -m -d "company_db" < benches/data/company_names.txt
+        simstring -b -n "$n" -m -q -d "company_db" < benches/data/company_names.txt
 
         end_time=$(date +%s%N)
 

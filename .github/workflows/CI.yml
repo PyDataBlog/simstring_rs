@@ -40,7 +40,10 @@ jobs:
       - name: Install uv
         run: pip install uv
       - name: Install Python dependencies
-        run: uv pip install simstring-fast
+        run: |
+          uv venv
+          source .venv/bin/activate
+          uv pip install simstring-fast
 
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
@@ -67,6 +70,7 @@ jobs:
           cargo bench --verbose
 
           echo "Running Python benchmarks..."
+          source .venv/bin/activate
           uv run benches/bench.py
 
           echo "Running Ruby benchmarks..."

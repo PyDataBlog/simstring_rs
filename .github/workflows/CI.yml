@@ -19,6 +19,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y software-properties-common
+          sudo add-apt-repository universe
+          sudo apt-get update
+          sudo apt-get install -y build-essential simstring-bin
+
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -29,14 +37,6 @@ jobs:
         run: |
           echo "Running Rust benchmarks..."
           cargo bench
-
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y software-properties-common
-          sudo add-apt-repository universe
-          sudo apt-get update
-          sudo apt-get install -y build-essential simstring-bin
 
       - name: Run SimString C++ benchmarks
         run: |
@@ -49,7 +49,7 @@ jobs:
           python-version: "3.13"
       - name: Install uv
         run: pip install uv
-      - name: Install Python dependencies
+      - name: Run Python Benchmarks
         run: |
           uv venv
           source .venv/bin/activate
@@ -62,7 +62,7 @@ jobs:
         with:
           ruby-version: "3.3"
           bundler-cache: true
-      - name: Install Ruby dependencies
+      - name: Run Ruby Benchmarks
         run: |
           gem install simstring_pure
           gem install descriptive_statistics
@@ -73,7 +73,7 @@ jobs:
         uses: julia-actions/setup-julia@v2
         with:
           version: "1.11"
-      - name: Install Julia dependencies
+      - name: Run Julia Benchmarks
         run: |
           julia -e 'using Pkg; Pkg.add(["SimString", "BenchmarkTools", "Statistics"])'
           echo "Running Julia benchmarks..."

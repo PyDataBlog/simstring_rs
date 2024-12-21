@@ -33,51 +33,51 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y build-essential simstring-bin
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.13"
-      - name: Install uv
-        run: pip install uv
-      - name: Install Python dependencies
-        run: |
-          uv venv
-          source .venv/bin/activate
-          uv pip install simstring-fast
-
-      - name: Set up Ruby
-        uses: ruby/setup-ruby@v1
-        with:
-          ruby-version: "3.3"
-          bundler-cache: true
-      - name: Install Ruby dependencies
-        run: |
-          gem install simstring_pure
-          gem install descriptive_statistics
-
-      - name: Set up Julia
-        uses: julia-actions/setup-julia@v2
-        with:
-          version: "1.11"
-      - name: Install Julia dependencies
-        run: |
-          julia -e 'using Pkg; Pkg.add(["SimString", "BenchmarkTools", "Statistics"])'
-
+      # - name: Set up Python
+      #   uses: actions/setup-python@v5
+      #   with:
+      #     python-version: "3.13"
+      # - name: Install uv
+      #   run: pip install uv
+      # - name: Install Python dependencies
+      #   run: |
+      #     uv venv
+      #     source .venv/bin/activate
+      #     uv pip install simstring-fast
+      #
+      # - name: Set up Ruby
+      #   uses: ruby/setup-ruby@v1
+      #   with:
+      #     ruby-version: "3.3"
+      #     bundler-cache: true
+      # - name: Install Ruby dependencies
+      #   run: |
+      #     gem install simstring_pure
+      #     gem install descriptive_statistics
+      #
+      # - name: Set up Julia
+      #   uses: julia-actions/setup-julia@v2
+      #   with:
+      #     version: "1.11"
+      # - name: Install Julia dependencies
+      #   run: |
+      #     julia -e 'using Pkg; Pkg.add(["SimString", "BenchmarkTools", "Statistics"])'
+      #
       # Run all benchmarks
       - name: Run benchmarks
         run: |
-          echo "Running Rust benchmarks..."
-          cargo bench --verbose
-
-          echo "Running Python benchmarks..."
-          source .venv/bin/activate
-          uv run benches/bench.py
-
-          echo "Running Ruby benchmarks..."
-          ruby benches/bench.rb
-
-          echo "Running Julia benchmarks..."
-          julia benches/bench.jl
+          # echo "Running Rust benchmarks..."
+          # cargo bench
+          #
+          # echo "Running Python benchmarks..."
+          # source .venv/bin/activate
+          # uv run benches/bench.py
+          #
+          # echo "Running Ruby benchmarks..."
+          # ruby benches/bench.rb
+          #
+          # echo "Running Julia benchmarks..."
+          # julia benches/bench.jl
 
           echo "Running C++ benchmarks..."
           bash benches/bench_cpp.sh

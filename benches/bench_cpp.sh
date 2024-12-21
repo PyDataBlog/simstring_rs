@@ -1,7 +1,5 @@
 #!/bin/bash
 
-output_dir="/app/output"
-
 iterations=100
 
 ngram_sizes=(2 3 4)
@@ -16,16 +14,10 @@ for n in "${ngram_sizes[@]}"; do
     for i in $(seq 1 $iterations); do
         echo "  Iteration $i:"
 
-        if [ -d "$output_dir" ]; then
-            rm -rf "$output_dir"
-        fi
-
-        mkdir -p "$output_dir"
-
         start_time=$(date +%s%N)
 
         # Build the Simstring database with the current n-gram size and markers
-        simstring -b -n "$n" -m -d "$output_dir/company_db_$n" < benches/data/company_names.txt
+        simstring -b -n "$n" -m -d "company_db" < benches/data/company_names.txt
 
         end_time=$(date +%s%N)
 

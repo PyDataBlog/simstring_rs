@@ -50,6 +50,7 @@ def bench_search
   [2, 3, 4].each do |ngram_size|
     db = create_db(ngram_size)
     companies.each { |company| db.add(company) }
+    matcher = SimString::StringMatcher.new(db, SimString::CosineMeasure.new)
 
     [0.6, 0.7, 0.8].each do |threshold|
       measurements = []
@@ -59,7 +60,7 @@ def bench_search
       while Time.now - start_time < 20 && iterations < 100
         time = Benchmark.realtime do
           search_terms.each do |term|
-            db.search(term, threshold)
+            matcher.ranked_search(term, threshold)
           end
         end
         measurements << time

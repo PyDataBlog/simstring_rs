@@ -94,7 +94,7 @@ def bench_search():
 
                 def benchmark_iteration():
                     for term in search_terms:
-                        searcher.search(term, threshold)
+                        searcher.ranked_search(term, threshold)
 
                 duration = measure_time(benchmark_iteration)
                 measurements.append(duration)

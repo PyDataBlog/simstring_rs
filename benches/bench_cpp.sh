@@ -1,41 +1,104 @@
 #!/bin/bash
 
 iterations=100
-
+measurement_time=20
 ngram_sizes=(2 3 4)
+thresholds=(0.6 0.7 0.8)
 
-declare -A average_times
+head -n 100 benches/data/company_names.txt > benches/data/search_queries.txt
 
-for n in "${ngram_sizes[@]}"; do
-    echo "Benchmarking for n-gram size: $n"
+echo -e "\nBenchmarking database insertions:"
+echo "----------------------------------------"
 
-    total_time=0
+for n in "${ngram_sizes[@]}"
+do
+    echo "ngram_$n:"
 
-    for i in $(seq 1 $iterations); do
-        echo "  Iteration $i:"
+    start_time="$(date +%s)"
+    count=0
+    mapfile -t times
 
-        start_time=$(date +%s%N)
-
-        # Build the Simstring database with the current n-gram size and markers
-        simstring -b -n "$n" -m -q -d "company_db" < benches/data/company_names.txt
-
-        end_time=$(date +%s%N)
-
-        elapsed_time=$(( (end_time - start_time) / 1000000 ))
-
-        total_time=$((total_time + elapsed_time))
-
-        echo "    Elapsed time: ${elapsed_time} ms"
+    while [ "$(date +%s)" -lt "$((start_time + measurement_time))" ] && [ $count -lt $iterations ]
+    do
+        start_ns="$(date +%s%N)"
+        simstring -b -n "$n" -m -q -d "company_db" < benches/data/company_names.txt >/dev/null 2>&1
+        end_ns="$(date +%s%N)"
+        elapsed_ms="$(( (end_ns - start_ns) / 1000000 ))"
+        times+=("$elapsed_ms")
+        ((count++))
     done
 
-    average_time=$((total_time / iterations))
+    sum=0
+    for t in "${times[@]}"
+    do
+        sum=$((sum + t))
+    done
+    mean=$(echo "scale=2; $sum / ${#times[@]}" | bc)
 
-    average_times["$n"]=$average_time
+    sum_squared_diff=0
+    for t in "${times[@]}"
+    do
+        diff=$(echo "scale=2; $t - $mean" | bc)
+        squared_diff=$(echo "scale=2; $diff * $diff" | bc)
+        sum_squared_diff=$(echo "scale=2; $sum_squared_diff + $squared_diff" | bc)
+    done
+    stddev=$(echo "scale=2; sqrt($sum_squared_diff / ${#times[@]})" | bc)
 
-    echo ""
+    echo "  Mean: ${mean}ms"
+    echo "  Std Dev: ${stddev}ms"
+    echo "  Iterations: ${#times[@]}"
 done
 
-echo "Summary of Average Execution Times:"
-for n in "${!average_times[@]}"; do
-    echo "  N-gram size $n: ${average_times[$n]} ms"
+echo -e "\nBenchmarking database searches:"
+echo "----------------------------------------"
+
+for n in "${ngram_sizes[@]}"
+do
+    simstring -b -n "$n" -m -q -d "company_db" < benches/data/company_names.txt >/dev/null 2>&1
+
+    for threshold in "${thresholds[@]}"
+    do
+        echo "ngram_${n} (threshold=${threshold}):"
+
+        start_time="$(date +%s)"
+        count=0
+        mapfile -t times
+
+        while [ "$(date +%s)" -lt "$((start_time + measurement_time))" ] && [ $count -lt $iterations ]
+        do
+            start_ns="$(date +%s%N)"
+
+            while IFS= read -r query
+            do
+                simstring -d "company_db" -t "$threshold" -s cosine -q <<< "$query" >/dev/null 2>&1
+            done < benches/data/search_queries.txt
+
+            end_ns="$(date +%s%N)"
+            elapsed_ms="$(( (end_ns - start_ns) / 1000000 ))"
+            times+=("$elapsed_ms")
+            ((count++))
+        done
+
+        sum=0
+        for t in "${times[@]}"
+        do
+            sum=$((sum + t))
+        done
+        mean=$(echo "scale=2; $sum / ${#times[@]}" | bc)
+
+        sum_squared_diff=0
+        for t in "${times[@]}"
+        do
+            diff=$(echo "scale=2; $t - $mean" | bc)
+            squared_diff=$(echo "scale=2; $diff * $diff" | bc)
+            sum_squared_diff=$(echo "scale=2; $sum_squared_diff + $squared_diff" | bc)
+        done
+        stddev=$(echo "scale=2; sqrt($sum_squared_diff / ${#times[@]})" | bc)
+
+        echo "  Mean: ${mean}ms"
+        echo "  Std Dev: ${stddev}ms"
+        echo "  Iterations: ${#times[@]}"
+    done
 done
+
+rm -f company_db benches/data/search_queries.txt

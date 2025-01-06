@@ -72,6 +72,27 @@ mod test_search {
         assert!(approx_eq(results[1].score, 0.8944271909999159));
     }
 
+    
+    #[test]
+    fn test_cosine_search_without_order_dependence() {
+        let feature_extractor = CharacterNGrams {
+            n: 2,
+            padder: " ".to_string(),
+        };
+        let measure = Cosine::new();
+        let mut db = HashDB::new(feature_extractor, measure);
+
+        db.insert("james bond".to_string());
+        db.insert("james brown".to_string());
+
+        let results = db.search("bond james", 0.6);
+        assert_eq!(results.len(), 2);
+        assert_eq!(results[0].value, "james bond");
+        assert!(approx_eq(results[0].score, 1.0));
+        assert_eq!(results[1].value, "james brown");
+        assert!(approx_eq(results[1].score, 0.6092717958449424));
+    }
+
     #[test]
     fn test_overlap_search() {
         let feature_extractor = CharacterNGrams {

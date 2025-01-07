@@ -1,4 +1,4 @@
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use criterion::{criterion_group, criterion_main, Criterion};
 use simstring_rust::database::HashDB;
 use simstring_rust::extractors::CharacterNGrams;
 use simstring_rust::measures::Cosine;
@@ -36,7 +36,6 @@ pub fn bench_search(c: &mut Criterion) {
 
     for ngram_size in [2, 3, 4] {
         let mut db = create_db(ngram_size);
-        // Populate database
         for company in &companies {
             db.insert(company.clone());
         }

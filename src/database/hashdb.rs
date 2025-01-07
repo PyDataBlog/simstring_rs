@@ -109,6 +109,11 @@ where
             }
         }
 
+        // Early exit for tau == 1: return all candidates without further verification
+        if tau == 1 {
+            return candidate_match_counts.into_keys().collect();
+        }
+
         let mut results = Vec::new();
 
         // Second phase: verify candidates

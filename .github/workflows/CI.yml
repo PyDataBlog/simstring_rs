@@ -13,6 +13,72 @@ env:
   RUST_BACKTRACE: 1
 
 jobs:
+  benchmark:
+    name: Run Benchmarks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y software-properties-common
+          sudo add-apt-repository universe
+          sudo apt-get update
+          sudo apt-get install -y build-essential simstring-bin
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+          components: rustfmt, clippy
+
+      - name: Rust Benchmarks
+        run: |
+          echo "Running Rust benchmarks..."
+          cargo bench
+
+      - name: Run SimString C++ benchmarks
+        run: |
+          echo "Running C++ benchmarks..."
+          bash benches/bench_cpp.sh
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Run Python Benchmarks
+        run: |
+          pip install uv
+          uv venv
+          source .venv/bin/activate
+          uv pip install simstring-fast
+          echo "Running Python Benchmarks..."
+          uv run benches/bench.py
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.3"
+          bundler-cache: true
+      - name: Run Ruby Benchmarks
+        run: |
+          gem install simstring_pure
+          gem install descriptive_statistics
+          echo "Running Ruby benchmarks..."
+          ruby benches/bench.rb
+
+      - name: Set up Julia
+        uses: julia-actions/setup-julia@v2
+        with:
+          version: "1.11"
+      - name: Run Julia Benchmarks
+        run: |
+          julia -e 'using Pkg; Pkg.add(["SimString", "BenchmarkTools", "Statistics"])'
+          echo "Running Julia benchmarks..."
+          julia benches/bench.jl
+
   test:
     name: Test on ${{ matrix.os }} / ${{ matrix.rust }}
     runs-on: ${{ matrix.os }}
@@ -39,7 +105,7 @@ jobs:
             target: aarch64-apple-darwin
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -95,6 +161,9 @@ jobs:
       - name: Check documentation
         run: cargo doc --no-deps --document-private-items
 
+      - name: Run benchmarks
+        run: cargo bench --verbose
+
   # Publish to crates.io on new tags
   publish:
     name: Publish to crates.io
@@ -102,7 +171,7 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable

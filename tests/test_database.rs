@@ -307,4 +307,26 @@ mod hashdb_tests {
             .sum();
         assert_eq!(total_ngrams, total_ngrams_expected);
     }
+
+    #[test]
+    fn test_build_from_file() {
+        let feature_extractor = CharacterNGrams {
+            n: 2,
+            padder: " ".to_string(),
+        };
+        let measure = Cosine {};
+        let mut db = HashDB::new(feature_extractor, measure);
+
+        let file_path = "tests/data/test_data.txt";
+        db.build_from_file(file_path).unwrap();
+
+        let expected_strings: HashSet<String> = ["hello".to_string(), "world".to_string()]
+            .iter()
+            .cloned()
+            .collect();
+
+        let actual_strings: HashSet<String> = db.string_collection.iter().cloned().collect();
+
+        assert_eq!(actual_strings, expected_strings);
+    }
 }

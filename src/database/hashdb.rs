@@ -1,6 +1,8 @@
 use crate::search::SearchResult;
 use crate::{FeatureExtractor, SimStringDB, SimilarityMeasure};
 use std::collections::{HashMap, HashSet};
+use std::fs::File;
+use std::io::{BufRead, BufReader};
 
 pub struct HashDB<TExtractor, TMeasure>
 where
@@ -49,6 +51,18 @@ where
                 .or_default()
                 .insert(s.clone());
         }
+    }
+
+    pub fn build_from_file(&mut self, file_path: &str) -> std::io::Result<()> {
+        let file = File::open(file_path)?;
+        let reader = BufReader::new(file);
+
+        for line in reader.lines() {
+            let line = line?;
+            self.insert(line);
+        }
+
+        Ok(())
     }
 
     pub fn search(&mut self, query: &str, alpha: f64) -> Vec<SearchResult<String>> {

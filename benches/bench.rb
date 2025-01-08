@@ -1,6 +1,7 @@
 require 'benchmark'
 require 'simstring_pure'
 require 'descriptive_statistics'
+require 'json'
 
 def create_db(ngram_size)
   SimString::Database.new(SimString::NGramBuilder.new(ngram_size))
@@ -16,6 +17,8 @@ def bench_insert
 
   puts "\nBenchmarking database insertions:"
   puts "-" * 40
+
+  results = []
 
   [2, 3, 4].each do |ngram_size|
     measurements = []
@@ -33,11 +36,23 @@ def bench_insert
       iterations += 1
     end
 
+    mean_time = measurements.mean * 1000
+    stddev = measurements.standard_deviation * 1000
+
     puts "ngram_#{ngram_size}:"
-    puts "  Mean: #{(measurements.mean * 1000).round(2)}ms"
-    puts "  Std Dev: #{(measurements.standard_deviation * 1000).round(2)}ms"
+    puts "  Mean: #{mean_time.round(2)}ms"
+    puts "  Std Dev: #{stddev.round(2)}ms"
     puts "  Iterations: #{measurements.length}"
+
+    results << {
+      ngram_size: ngram_size,
+      mean: mean_time,
+      stddev: stddev,
+      iterations: measurements.length
+    }
   end
+
+  results
 end
 
 def bench_search
@@ -46,6 +61,8 @@ def bench_search
 
   puts "\nBenchmarking database searches:"
   puts "-" * 40
+
+  results = []
 
   [2, 3, 4].each do |ngram_size|
     db = create_db(ngram_size)
@@ -67,17 +84,39 @@ def bench_search
         iterations += 1
       end
 
+      mean_time = measurements.mean * 1000
+      stddev = measurements.standard_deviation * 1000
+
       puts "ngram_#{ngram_size} (threshold=#{threshold}):"
-      puts "  Mean: #{(measurements.mean * 1000).round(2)}ms"
-      puts "  Std Dev: #{(measurements.standard_deviation * 1000).round(2)}ms"
+      puts "  Mean: #{mean_time.round(2)}ms"
+      puts "  Std Dev: #{stddev.round(2)}ms"
       puts "  Iterations: #{measurements.length}"
+
+      results << {
+        ngram_size: ngram_size,
+        threshold: threshold,
+        mean: mean_time,
+        stddev: stddev,
+        iterations: measurements.length
+      }
     end
   end
+
+  results
 end
 
 def main
-  bench_insert
-  bench_search
+  insert_results = bench_insert
+  search_results = bench_search
+
+  json_output = {
+    insert_results: insert_results,
+    search_results: search_results
+  }
+
+  File.open("benches/benchmark_results.json", "w") do |f|
+    f.write(JSON.pretty_generate(json_output))
+  end
 end
 
 main

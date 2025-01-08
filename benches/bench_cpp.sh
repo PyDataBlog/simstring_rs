@@ -10,6 +10,8 @@ head -n 100 benches/data/company_names.txt > benches/data/search_queries.txt
 echo -e "\nBenchmarking database insertions:"
 echo "----------------------------------------"
 
+results=()
+
 for n in "${ngram_sizes[@]}"
 do
     echo "ngram_$n:"
@@ -47,6 +49,8 @@ do
     echo "  Mean: ${mean}ms"
     echo "  Std Dev: ${stddev}ms"
     echo "  Iterations: ${#times[@]}"
+
+    results+=("{\"ngram_size\": $n, \"mean\": $mean, \"stddev\": $stddev, \"iterations\": ${#times[@]}}")
 done
 
 echo -e "\nBenchmarking database searches:"
@@ -98,7 +102,13 @@ do
         echo "  Mean: ${mean}ms"
         echo "  Std Dev: ${stddev}ms"
         echo "  Iterations: ${#times[@]}"
+
+        results+=("{\"ngram_size\": $n, \"threshold\": $threshold, \"mean\": $mean, \"stddev\": $stddev, \"iterations\": ${#times[@]}}")
     done
 done
+
+json_output="{\"results\": [$(IFS=,; echo "${results[*]}")]}"
+
+echo "$json_output" > benches/benchmark_results.json
 
 rm -f company_db benches/data/search_queries.txt

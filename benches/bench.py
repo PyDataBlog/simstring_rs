@@ -7,6 +7,7 @@
 import statistics
 import time
 import typing as t
+import json
 from pathlib import Path
 
 from simstring.database.dict import DictDatabase
@@ -41,6 +42,8 @@ def bench_insert():
     print("\nBenchmarking database insertions:")
     print("-" * 40)
 
+    results = []
+
     for ngram_size in [2, 3, 4]:
         measurements = []
         start_time = time.time()
@@ -65,6 +68,15 @@ def bench_insert():
         print(f"  Std Dev: {stddev * 1000:.2f}ms")
         print(f"  Iterations: {len(measurements)}")
 
+        results.append({
+            "ngram_size": ngram_size,
+            "mean": mean_time * 1000,
+            "stddev": stddev * 1000,
+            "iterations": len(measurements)
+        })
+
+    return results
+
 
 def bench_search():
     company_names = load_company_names()
@@ -75,6 +87,8 @@ def bench_search():
 
     print("\nBenchmarking database searches:")
     print("-" * 40)
+
+    results = []
 
     for ngram_size in [2, 3, 4]:
         db = create_database(ngram_size)
@@ -108,7 +122,29 @@ def bench_search():
             print(f"  Std Dev: {stddev * 1000:.2f}ms")
             print(f"  Iterations: {len(measurements)}")
 
+            results.append({
+                "ngram_size": ngram_size,
+                "threshold": threshold,
+                "mean": mean_time * 1000,
+                "stddev": stddev * 1000,
+                "iterations": len(measurements)
+            })
+
+    return results
+
+
+def main():
+    insert_results = bench_insert()
+    search_results = bench_search()
+
+    json_output = {
+        "insert_results": insert_results,
+        "search_results": search_results
+    }
+
+    with open("benches/benchmark_results.json", "w") as f:
+        json.dump(json_output, f, indent=4)
+
 
 if __name__ == "__main__":
-    bench_insert()
-    bench_search()
+    main()

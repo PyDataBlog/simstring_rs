@@ -79,6 +79,22 @@ jobs:
           echo "Running Julia benchmarks..."
           julia benches/bench.jl
 
+      - name: Compile benchmark results into JSON
+        run: |
+          echo "Compiling benchmark results into JSON..."
+          jq -s 'reduce .[] as $item ({}; . * $item)' benches/benchmark_results.json benches/benchmark_results.json benches/benchmark_results.json benches/benchmark_results.json benches/benchmark_results.json > benches/compiled_benchmark_results.json
+
+      - name: Generate documentation page from JSON results
+        run: |
+          echo "Generating documentation page from JSON results..."
+          python scripts/generate_docs.py benches/compiled_benchmark_results.json
+
+      - name: Deploy documentation to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./docs
+
   test:
     name: Test on ${{ matrix.os }} / ${{ matrix.rust }}
     runs-on: ${{ matrix.os }}

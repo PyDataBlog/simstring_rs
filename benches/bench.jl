@@ -1,5 +1,6 @@
 using BenchmarkTools
 using SimString
+using JSON
 
 function load_companies()
     current_dir = pwd()
@@ -15,6 +16,8 @@ function bench_insert()
     companies = load_companies()
     println("\nBenchmarking database insertions:")
     println(repeat("-", 40))
+
+    results = []
 
     for ngram_size in [2, 3, 4]
         b = @benchmarkable begin
@@ -33,7 +36,11 @@ function bench_insert()
         println("  Mean: $(round(mean_time, digits=2))ms")
         println("  Std Dev: $(round(stddev, digits=2))ms")
         println("  Iterations: $(length(result.times))")
+
+        push!(results, Dict("ngram_size" => ngram_size, "mean" => mean_time, "stddev" => stddev, "iterations" => length(result.times)))
     end
+
+    return results
 end
 
 function bench_search()
@@ -42,6 +49,8 @@ function bench_search()
 
     println("\nBenchmarking database searches:")
     println(repeat("-", 40))
+
+    results = []
 
     for ngram_size in [2, 3, 4]
         db = create_db(ngram_size)
@@ -65,13 +74,22 @@ function bench_search()
             println("  Mean: $(round(mean_time, digits=2))ms")
             println("  Std Dev: $(round(stddev, digits=2))ms")
             println("  Iterations: $(length(result.times))")
+
+            push!(results, Dict("ngram_size" => ngram_size, "threshold" => threshold, "mean" => mean_time, "stddev" => stddev, "iterations" => length(result.times)))
         end
     end
+
+    return results
 end
 
 function main()
-    bench_insert()
-    bench_search()
+    insert_results = bench_insert()
+    search_results = bench_search()
+
+    json_output = Dict("insert_results" => insert_results, "search_results" => search_results)
+    open("benches/benchmark_results.json", "w") do f
+        JSON.print(f, json_output)
+    end
 end
 
 main()

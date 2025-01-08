@@ -5,12 +5,17 @@ use simstring_rust::measures::Cosine;
 use std::env;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
+use std::fs::OpenOptions;
+use std::io::Write;
+use serde_json::json;
 
 pub fn bench_insert(c: &mut Criterion) {
     let companies = load_companies();
 
     let mut group = c.benchmark_group("db_insert");
     group.measurement_time(std::time::Duration::from_secs(20));
+
+    let mut results = vec![];
 
     for ngram_size in [2, 3, 4] {
         group.bench_function(format!("ngram_{}", ngram_size), |b| {
@@ -23,8 +28,21 @@ pub fn bench_insert(c: &mut Criterion) {
                 },
             )
         });
+
+        let mean = group.mean();
+        let stddev = group.stddev();
+        let iterations = group.iterations();
+
+        results.push(json!({
+            "ngram_size": ngram_size,
+            "mean": mean,
+            "stddev": stddev,
+            "iterations": iterations
+        }));
     }
     group.finish();
+
+    save_results_to_file("insert_results.json", &results);
 }
 
 pub fn bench_search(c: &mut Criterion) {
@@ -33,6 +51,8 @@ pub fn bench_search(c: &mut Criterion) {
 
     let mut group = c.benchmark_group("db_search");
     group.measurement_time(std::time::Duration::from_secs(20));
+
+    let mut results = vec![];
 
     for ngram_size in [2, 3, 4] {
         let mut db = create_db(ngram_size);
@@ -51,9 +71,23 @@ pub fn bench_search(c: &mut Criterion) {
                     })
                 },
             );
+
+            let mean = group.mean();
+            let stddev = group.stddev();
+            let iterations = group.iterations();
+
+            results.push(json!({
+                "ngram_size": ngram_size,
+                "threshold": threshold,
+                "mean": mean,
+                "stddev": stddev,
+                "iterations": iterations
+            }));
         }
     }
     group.finish();
+
+    save_results_to_file("search_results.json", &results);
 }
 
 fn create_db(ngram_size: usize) -> HashDB<CharacterNGrams, Cosine> {
@@ -76,6 +110,12 @@ fn load_companies() -> Vec<String> {
     let file = File::open(file_path).unwrap();
     let reader = BufReader::new(file);
     reader.lines().map_while(Result::ok).collect()
+}
+
+fn save_results_to_file(filename: &str, results: &Vec<serde_json::Value>) {
+    let file_path = env::current_dir().unwrap().join("benches").join(filename);
+    let file = OpenOptions::new().create(true).write(true).truncate(true).open(file_path).unwrap();
+    serde_json::to_writer_pretty(file, results).unwrap();
 }
 
 criterion_group!(benches, bench_insert, bench_search);

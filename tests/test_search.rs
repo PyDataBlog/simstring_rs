@@ -72,7 +72,6 @@ mod test_search {
         assert!(approx_eq(results[1].score, 0.8944271909999159));
     }
 
-    
     #[test]
     fn test_cosine_search_without_order_dependence() {
         let feature_extractor = CharacterNGrams {

@@ -42,7 +42,7 @@ end
 
 def bench_search
   companies = load_companies()
-  search_terms = companies[0...100]  # Use first 100 companies as search terms
+  search_terms = companies[0...100]
 
   puts "\nBenchmarking database searches:"
   puts "-" * 40

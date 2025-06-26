@@ -1,4 +1,5 @@
-use super::{append_feature_counts, FeatureExtractor};
+use crate::FeatureExtractor;
+use lasso::{Rodeo, Spur};
 
 pub struct WordNgrams {
     n: usize,
@@ -23,7 +24,7 @@ impl Default for WordNgrams {
 }
 
 impl FeatureExtractor for WordNgrams {
-    fn features(&self, text: &str) -> Vec<String> {
+    fn features(&self, text: &str, interner: &mut Rodeo) -> Vec<Spur> {
         if self.n == 0 {
             return vec![];
         }
@@ -43,6 +44,6 @@ impl FeatureExtractor for WordNgrams {
             .map(|window| window.join(" "))
             .collect();
 
-        append_feature_counts(ngrams)
+        super::append_feature_counts(interner, ngrams)
     }
 }

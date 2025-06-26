@@ -1,4 +1,5 @@
 use crate::FeatureExtractor;
+use lasso::{Rodeo, Spur};
 
 pub struct CharacterNgrams {
     n: usize,
@@ -21,7 +22,7 @@ impl Default for CharacterNgrams {
 }
 
 impl FeatureExtractor for CharacterNgrams {
-    fn features(&self, text: &str) -> Vec<String> {
+    fn features(&self, text: &str, interner: &mut Rodeo) -> Vec<Spur> {
         if self.n == 0 {
             return vec![];
         }
@@ -35,6 +36,6 @@ impl FeatureExtractor for CharacterNgrams {
             .map(|window| window.iter().collect())
             .collect();
 
-        super::append_feature_counts(ngrams)
+        super::append_feature_counts(interner, ngrams)
     }
 }

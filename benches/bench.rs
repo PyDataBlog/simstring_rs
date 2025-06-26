@@ -28,7 +28,7 @@ pub fn bench_insert(c: &mut Criterion) {
     let companies = load_companies();
 
     let mut group = c.benchmark_group("db_insert");
-    group.measurement_time(std::time::Duration::from_secs(20));
+    group.measurement_time(std::time::Duration::from_secs(50));
 
     for ngram_size in [2, 3, 4].iter() {
         group.bench_with_input(
@@ -66,7 +66,7 @@ pub fn bench_search(c: &mut Criterion) {
     }
 
     let mut group = c.benchmark_group("db_search");
-    group.measurement_time(std::time::Duration::from_secs(20));
+    group.measurement_time(std::time::Duration::from_secs(50));
 
     for ngram_size in [2, 3, 4].iter() {
         let fe = Arc::new(CharacterNgrams::new(*ngram_size, " "));
@@ -78,7 +78,7 @@ pub fn bench_search(c: &mut Criterion) {
         let measure = Cosine;
         let searcher = Searcher::new(&db, measure);
 
-        for threshold in [0.7, 0.8, 0.9].iter() {
+        for threshold in [0.6, 0.7, 0.8, 0.9].iter() {
             let bench_id_str = format!("ngram_{}_threshold_{}", ngram_size, threshold);
             group.bench_with_input(
                 BenchmarkId::new("params", bench_id_str),

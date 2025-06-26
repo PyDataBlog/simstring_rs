@@ -1,31 +1,16 @@
 use crate::database::{Database, StringId};
 use crate::extractors::FeatureExtractor;
 use ahash::{AHashMap, AHashSet};
+use lasso::{Rodeo, Spur};
 use std::fmt;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 pub struct HashDb {
-    /// The feature extractor, shared with an Arc to avoid cloning.
     feature_extractor: Arc<dyn FeatureExtractor>,
-    /// The master list of all strings. The `StringId` is the index into this Vec.
     strings: Vec<String>,
-    /// A cache of features for each string, indexed by StringId.
-    /// This avoids re-calculating features during search.
-    string_features: Vec<Vec<String>>,
-    /// The main index:
-    /// Map: feature_set_size -> feature -> set_of_string_ids
-    feature_map: AHashMap<usize, AHashMap<String, AHashSet<StringId>>>,
-}
-
-impl HashDb {
-    pub fn new(feature_extractor: Arc<dyn FeatureExtractor>) -> Self {
-        Self {
-            feature_extractor,
-            strings: Vec::new(),
-            string_features: Vec::new(),
-            feature_map: AHashMap::default(),
-        }
-    }
+    string_features: Vec<Vec<Spur>>,
+    feature_map: AHashMap<usize, AHashMap<Spur, AHashSet<StringId>>>,
+    interner: Arc<Mutex<Rodeo>>,
 }
 
 impl fmt::Debug for HashDb {
@@ -35,20 +20,34 @@ impl fmt::Debug for HashDb {
             .values()
             .map(|size_map| size_map.len())
             .sum();
+        let interner = self.interner.lock().unwrap();
 
         f.debug_struct("HashDb")
             .field("num_strings", &self.strings.len())
             .field("num_feature_size_buckets", &self.feature_map.len())
-            .field("total_unique_features", &total_unique_features)
+            .field("total_unique_features_interned", &interner.len())
+            .field("total_unique_features_indexed", &total_unique_features)
             .finish()
+    }
+}
+
+impl HashDb {
+    pub fn new(feature_extractor: Arc<dyn FeatureExtractor>) -> Self {
+        Self {
+            feature_extractor,
+            strings: Vec::new(),
+            string_features: Vec::new(),
+            feature_map: AHashMap::default(),
+            interner: Arc::new(Mutex::new(Rodeo::default())),
+        }
     }
 }
 
 impl Database for HashDb {
     fn insert(&mut self, text: String) {
-        let features = self.feature_extractor.features(&text);
+        let mut interner = self.interner.lock().unwrap();
+        let features = self.feature_extractor.features(&text, &mut interner);
         let size = features.len();
-        // The StringId is simply the current number of strings in the DB.
         let string_id = self.strings.len();
 
         self.strings.push(text);
@@ -60,15 +59,23 @@ impl Database for HashDb {
         }
     }
 
-    fn lookup_strings(&self, size: usize, feature: &str) -> Option<&AHashSet<StringId>> {
-        self.feature_map.get(&size)?.get(feature)
+    fn clear(&mut self) {
+        self.strings.clear();
+        self.string_features.clear();
+        self.feature_map.clear();
+        // clear the interner to release memory
+        self.interner.lock().unwrap().clear();
+    }
+
+    fn lookup_strings(&self, size: usize, feature: Spur) -> Option<&AHashSet<StringId>> {
+        self.feature_map.get(&size)?.get(&feature)
     }
 
     fn get_string(&self, id: StringId) -> Option<&str> {
         self.strings.get(id).map(AsRef::as_ref)
     }
 
-    fn get_features(&self, id: StringId) -> Option<&Vec<String>> {
+    fn get_features(&self, id: StringId) -> Option<&Vec<Spur>> {
         self.string_features.get(id)
     }
 
@@ -78,5 +85,9 @@ impl Database for HashDb {
 
     fn max_feature_len(&self) -> usize {
         self.feature_map.keys().max().copied().unwrap_or(0)
+    }
+
+    fn interner(&self) -> Arc<Mutex<Rodeo>> {
+        Arc::clone(&self.interner)
     }
 }

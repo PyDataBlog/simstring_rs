@@ -2,22 +2,25 @@ mod character_ngrams;
 mod word_ngrams;
 
 use ahash::AHashMap;
+use lasso::{Rodeo, Spur};
 
-/// Takes a list of features and makes each one unique by appending its occurrence count.
-/// For example, `["ab", "bc", "ab"]` becomes `["ab1", "bc1", "ab2"]`.
-fn append_feature_counts(non_unique_list: Vec<String>) -> Vec<String> {
+/// Takes a list of features and makes each one unique by appending its occurrence count,
+/// then interns the result.
+fn append_feature_counts(interner: &mut Rodeo, features: Vec<String>) -> Vec<Spur> {
     let mut counter: AHashMap<String, usize> = AHashMap::default();
-    let mut unique_list = Vec::with_capacity(non_unique_list.len());
-    for val in non_unique_list {
+    let mut unique_features = Vec::with_capacity(features.len());
+    for val in features {
         let count = counter.entry(val.clone()).or_insert(0);
         *count += 1;
-        unique_list.push(format!("{}{}", val, *count));
+        let unique_string = format!("{}{}", val, *count);
+        unique_features.push(interner.get_or_intern(unique_string));
     }
-    unique_list
+    unique_features
 }
 
 pub trait FeatureExtractor: Send + Sync {
-    fn features(&self, text: &str) -> Vec<String>;
+    /// Extracts features from text, interning them and returning their IDs.
+    fn features(&self, text: &str, interner: &mut Rodeo) -> Vec<Spur>;
 }
 
 pub use character_ngrams::CharacterNgrams;

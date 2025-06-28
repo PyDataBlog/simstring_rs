@@ -1,6 +1,5 @@
 use simstring_rust::{
-    CharacterNgrams, Cosine, Database, Dice, ExactMatch, HashDb, Jaccard, Overlap, SearchError,
-    Searcher,
+    CharacterNgrams, Cosine, Dice, ExactMatch, HashDb, Jaccard, Overlap, SearchError, Searcher,
 };
 use std::sync::Arc;
 

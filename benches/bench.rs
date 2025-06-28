@@ -1,5 +1,5 @@
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
-use simstring_rust::{CharacterNgrams, Cosine, Database, HashDb, Searcher};
+use simstring_rust::{CharacterNgrams, Cosine, HashDb, Searcher};
 use std::env;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
@@ -18,7 +18,7 @@ fn setup_benchmark_environment() {
             .num_threads(num_threads)
             .build_global()
         {
-            eprintln!("Failed to initialize global Rayon thread pool for benchmarks: {:?}. It might have been already initialized.", e);
+            eprintln!("Failed to initialize global Rayon thread pool for benchmarks: {e:?}.");
         }
     });
 }
@@ -66,7 +66,7 @@ pub fn bench_search(c: &mut Criterion) {
     }
 
     let mut group = c.benchmark_group("db_search");
-    group.measurement_time(std::time::Duration::from_secs(50));
+    group.measurement_time(std::time::Duration::from_secs(20));
 
     for ngram_size in [2, 3, 4].iter() {
         let fe = Arc::new(CharacterNgrams::new(*ngram_size, " "));
@@ -79,7 +79,7 @@ pub fn bench_search(c: &mut Criterion) {
         let searcher = Searcher::new(&db, measure);
 
         for threshold in [0.6, 0.7, 0.8, 0.9].iter() {
-            let bench_id_str = format!("ngram_{}_threshold_{}", ngram_size, threshold);
+            let bench_id_str = format!("ngram_{ngram_size}_threshold_{threshold}");
             group.bench_with_input(
                 BenchmarkId::new("params", bench_id_str),
                 threshold,
@@ -103,12 +103,9 @@ fn load_companies() -> Vec<String> {
         .join("data")
         .join("company_names.txt");
 
-    let file = File::open(&file_path).unwrap_or_else(|e| {
-        panic!(
-            "Failed to open company names file at {:?}: {}",
-            file_path, e
-        )
-    });
+    let file = File::open(&file_path)
+        .unwrap_or_else(|e| panic!("Failed to open company names file at {file_path:?}: {e}"));
+
     let reader = BufReader::new(file);
     reader.lines().map_while(Result::ok).collect()
 }

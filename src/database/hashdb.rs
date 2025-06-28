@@ -41,6 +41,14 @@ impl HashDb {
             interner: Arc::new(Mutex::new(Rodeo::default())),
         }
     }
+
+    pub fn insert(&mut self, text: String) {
+        Database::insert(self, text);
+    }
+
+    pub fn clear(&mut self) {
+        Database::clear(self);
+    }
 }
 
 impl Database for HashDb {

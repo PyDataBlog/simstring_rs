@@ -20,17 +20,14 @@ fn main() {
         db.insert(item.to_string());
     }
     println!("Indexing done in {:?}", start_index.elapsed());
-    println!("DB Summary: {:?}", db);
+    println!("DB Summary: {db:?}");
 
     // 3. Searching
     let searcher = Searcher::new(&db, measure);
 
     let query = "foo";
     let alpha = 0.8;
-    println!(
-        "\n--- Ranked Search for '{}' with alpha = {} ---",
-        query, alpha
-    );
+    println!("\n--- Ranked Search for '{query}' with alpha = {alpha} ---");
 
     let start_search = Instant::now();
     match searcher.ranked_search(query, alpha) {
@@ -40,12 +37,12 @@ fn main() {
                 println!("No matches found.");
             } else {
                 for (item, score) in results {
-                    println!("- Match: '{}', Score: {:.4}", item, score);
+                    println!("- Match: '{item}', Score: {score:.4}");
                 }
             }
         }
         Err(e) => {
-            eprintln!("An error occurred during search: {}", e);
+            eprintln!("An error occurred during search: {e}");
         }
     }
 }

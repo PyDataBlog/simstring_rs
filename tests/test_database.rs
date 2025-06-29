@@ -118,7 +118,7 @@ fn test_hashdb_debug_output() {
     let mut db = HashDb::new(feature_extractor);
     db.insert("test".to_string());
     db.insert("apple".to_string());
-    let debug_output = format!("{:?}", db);
+    let debug_output = format!("{db:?}");
     assert!(debug_output.contains("num_strings: 2"));
     assert!(debug_output.contains("num_feature_size_buckets: 2"));
     assert!(debug_output.contains("total_unique_features_interned: 11"));

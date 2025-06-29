@@ -129,8 +129,7 @@ fn test_exact_match_search_basic() {
         assert_eq!(
             results.len(),
             1,
-            "Expected 1 result for threshold {}",
-            threshold
+            "Expected 1 result for threshold {threshold}"
         );
         assert_eq!(results[0].0, "foo", "Result should be 'foo'");
         assert!(

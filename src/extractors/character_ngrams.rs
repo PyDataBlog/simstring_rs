@@ -27,7 +27,7 @@ impl FeatureExtractor for CharacterNgrams {
             return vec![];
         }
         let padding = self.endmarker.repeat(self.n.saturating_sub(1));
-        let padded_text = format!("{}{}{}", padding, text, padding);
+        let padded_text = format!("{padding}{text}{padding}");
 
         let ngrams: Vec<String> = padded_text
             .chars()

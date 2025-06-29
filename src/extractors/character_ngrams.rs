@@ -17,7 +17,7 @@ impl FeatureExtractor for CharacterNGrams {
 
 fn pad_string(s: &str, padder: &str, n: usize) -> String {
     let pad = padder.repeat(n);
-    format!("{}{}{}", pad, s, pad)
+    format!("{pad}{s}{pad}")
 }
 
 fn init_char_ngrams(s: &str, n: usize) -> Vec<String> {

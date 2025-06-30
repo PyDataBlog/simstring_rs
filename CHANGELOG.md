@@ -1,3 +1,9 @@
+## v0.2.0
+
+### Features
+
+- Refactor (completely) API for string interning and parallel searches
+
 ## v0.1.3
 
 ### Features
@@ -31,4 +37,3 @@
 
 - keywords not exceeding 5 items (#3)
 - Added tag trigger to CI workflow (#2)
-

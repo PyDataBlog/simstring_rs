@@ -71,7 +71,7 @@ def bench_search():
     search_terms = company_names[:100]  # Use first 100 companies as search terms
     iterations = 100
     measurement_time = 20
-    similarity_thresholds = [0.6, 0.7, 0.8]
+    similarity_thresholds = [0.6, 0.7, 0.8, 0.9]
 
     print("\nBenchmarking database searches:")
     print("-" * 40)

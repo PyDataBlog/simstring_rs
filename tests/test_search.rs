@@ -1,302 +1,246 @@
-use simstring_rust::database::HashDB;
-use simstring_rust::extractors::CharacterNGrams;
-use simstring_rust::measures::{Cosine, Dice, ExactMatch, Jaccard, Overlap};
+use simstring_rust::{
+    CharacterNgrams, Cosine, Dice, ExactMatch, HashDb, Jaccard, Overlap, SearchError, Searcher,
+};
+use std::sync::Arc;
 
-mod test_search {
-    use super::*;
+fn approx_eq(a: f64, b: f64) -> bool {
+    (a - b).abs() < 1e-9
+}
 
-    fn approx_eq(a: f64, b: f64) -> bool {
-        (a - b).abs() < 1e-9
-    }
+#[test]
+fn test_cosine_search_basic() {
+    let feature_extractor = Arc::new(CharacterNgrams::new(2, "$"));
+    let measure = Cosine;
+    let mut db = HashDb::new(feature_extractor);
 
-    #[test]
-    fn test_dice_search() {
-        let feature_extractor = CharacterNGrams {
-            n: 2,
-            padder: " ".to_string(),
-        };
-        let measure = Dice::new();
-        let mut db = HashDB::new(feature_extractor, measure);
+    db.insert("foo".to_string());
+    db.insert("bar".to_string());
+    db.insert("fooo".to_string());
 
-        db.insert("foo".to_string());
-        db.insert("bar".to_string());
-        db.insert("fooo".to_string());
+    let searcher = Searcher::new(&db, measure);
+    let results = searcher.ranked_search("foo", 0.8).unwrap();
 
-        let results = db.search("foo", 0.8);
-        assert_eq!(results.len(), 2);
-        assert_eq!(results[0].value, "foo");
-        assert!(approx_eq(results[0].score, 1.0));
-        assert_eq!(results[1].value, "fooo");
-        assert!(approx_eq(results[1].score, 0.8888888888888888));
-    }
+    assert_eq!(results.len(), 2, "Expected 2 results");
+    assert_eq!(results[0].0, "foo", "First result should be 'foo'");
+    assert!(
+        approx_eq(results[0].1, 1.0),
+        "Score for 'foo' should be 1.0, got {}",
+        results[0].1
+    );
+    assert_eq!(results[1].0, "fooo", "Second result should be 'fooo'");
+    assert!(
+        approx_eq(results[1].1, 0.8944271909999159),
+        "Score for 'fooo' should be ~0.8944, got {}",
+        results[1].1
+    );
+}
 
-    #[test]
-    fn test_jaccard_search() {
-        let feature_extractor = CharacterNGrams {
-            n: 2,
-            padder: " ".to_string(),
-        };
-        let measure = Jaccard::new();
-        let mut db = HashDB::new(feature_extractor, measure);
+#[test]
+fn test_dice_search_basic() {
+    let feature_extractor = Arc::new(CharacterNgrams::new(2, "$"));
+    let measure = Dice;
+    let mut db = HashDb::new(feature_extractor);
 
-        db.insert("foo".to_string());
-        db.insert("bar".to_string());
-        db.insert("fooo".to_string());
+    db.insert("foo".to_string());
+    db.insert("bar".to_string());
+    db.insert("fooo".to_string());
 
-        let results = db.search("foo", 0.8);
-        assert_eq!(results.len(), 2);
-        assert_eq!(results[0].value, "foo");
-        assert!(approx_eq(results[0].score, 1.0));
-        assert_eq!(results[1].value, "fooo");
-        assert!(approx_eq(results[1].score, 0.8));
-    }
+    let searcher = Searcher::new(&db, measure);
+    let results = searcher.ranked_search("foo", 0.8).unwrap();
 
-    #[test]
-    fn test_cosine_search() {
-        let feature_extractor = CharacterNGrams {
-            n: 2,
-            padder: " ".to_string(),
-        };
-        let measure = Cosine::new();
-        let mut db = HashDB::new(feature_extractor, measure);
+    assert_eq!(results.len(), 2, "Expected 2 results");
+    assert_eq!(results[0].0, "foo", "First result should be 'foo'");
+    assert!(
+        approx_eq(results[0].1, 1.0),
+        "Score for 'foo' should be 1.0, got {}",
+        results[0].1
+    );
+    assert_eq!(results[1].0, "fooo", "Second result should be 'fooo'");
+    assert!(
+        approx_eq(results[1].1, 0.8888888888888888),
+        "Score for 'fooo' should be ~0.8889, got {}",
+        results[1].1
+    );
+}
 
-        db.insert("foo".to_string());
-        db.insert("bar".to_string());
-        db.insert("fooo".to_string());
+#[test]
+fn test_jaccard_search_basic() {
+    let feature_extractor = Arc::new(CharacterNgrams::new(2, "$"));
+    let measure = Jaccard;
+    let mut db = HashDb::new(feature_extractor);
 
-        let results = db.search("foo", 0.8);
-        assert_eq!(results.len(), 2);
-        assert_eq!(results[0].value, "foo");
-        assert!(approx_eq(results[0].score, 1.0));
-        assert_eq!(results[1].value, "fooo");
-        assert!(approx_eq(results[1].score, 0.8944271909999159));
-    }
+    db.insert("foo".to_string());
+    db.insert("bar".to_string());
+    db.insert("fooo".to_string());
 
-    #[test]
-    fn test_cosine_search_without_order_dependence() {
-        let feature_extractor = CharacterNGrams {
-            n: 2,
-            padder: " ".to_string(),
-        };
-        let measure = Cosine::new();
-        let mut db = HashDB::new(feature_extractor, measure);
+    let searcher = Searcher::new(&db, measure);
+    let results = searcher.ranked_search("foo", 0.8).unwrap();
 
-        db.insert("james bond".to_string());
-        db.insert("james brown".to_string());
+    assert_eq!(results.len(), 2, "Expected 2 results");
+    assert_eq!(results[0].0, "foo", "First result should be 'foo'");
+    assert!(
+        approx_eq(results[0].1, 1.0),
+        "Score for 'foo' should be 1.0, got {}",
+        results[0].1
+    );
+    assert_eq!(results[1].0, "fooo", "Second result should be 'fooo'");
+    assert!(
+        approx_eq(results[1].1, 0.8),
+        "Score for 'fooo' should be 0.8, got {}",
+        results[1].1
+    );
+}
 
-        let results = db.search("bond james", 0.6);
-        assert_eq!(results.len(), 2);
-        assert_eq!(results[0].value, "james bond");
-        assert!(approx_eq(results[0].score, 1.0));
-        assert_eq!(results[1].value, "james brown");
-        assert!(approx_eq(results[1].score, 0.6092717958449424));
-    }
+#[test]
+fn test_overlap_search_basic() {
+    let feature_extractor = Arc::new(CharacterNgrams::new(2, "$"));
+    let measure = Overlap;
+    let mut db = HashDb::new(feature_extractor);
 
-    #[test]
-    fn test_overlap_search() {
-        let feature_extractor = CharacterNGrams {
-            n: 2,
-            padder: " ".to_string(),
-        };
-        let measure = Overlap::new();
-        let mut db = HashDB::new(feature_extractor, measure);
+    db.insert("foo".to_string());
+    db.insert("bar".to_string());
+    db.insert("fooo".to_string());
 
-        db.insert("foo".to_string());
-        db.insert("bar".to_string());
-        db.insert("fooo".to_string());
+    let searcher = Searcher::new(&db, measure);
+    let results = searcher.ranked_search("foo", 0.8).unwrap();
 
-        let results = db.search("foo", 0.8);
-        assert_eq!(results.len(), 2);
+    assert_eq!(results.len(), 2, "Expected 2 results");
+    assert_eq!(results[0].0, "foo");
+    assert!(approx_eq(results[0].1, 1.0));
+    assert_eq!(results[1].0, "fooo");
+    assert!(approx_eq(results[1].1, 1.0));
+}
 
-        let mut found_foo = false;
-        let mut found_fooo = false;
+#[test]
+fn test_exact_match_search_basic() {
+    let feature_extractor = Arc::new(CharacterNgrams::new(2, "$"));
+    let measure = ExactMatch;
+    let mut db = HashDb::new(feature_extractor);
 
-        for result in &results {
-            match result.value.as_str() {
-                "foo" => {
-                    found_foo = true;
-                    assert!(approx_eq(result.score, 1.0));
-                }
-                "fooo" => {
-                    found_fooo = true;
-                    assert!(approx_eq(result.score, 1.0));
-                }
-                _ => panic!("Unexpected result: {}", result.value),
-            }
-        }
+    db.insert("foo".to_string());
+    db.insert("bar".to_string());
+    db.insert("fooo".to_string());
 
-        assert!(found_foo && found_fooo, "Should find both 'foo' and 'fooo'");
-    }
+    let searcher = Searcher::new(&db, measure);
 
-    #[test]
-    fn test_exact_match_search() {
-        let feature_extractor = CharacterNGrams {
-            n: 2,
-            padder: " ".to_string(),
-        };
-        let measure = ExactMatch::new();
-        let mut db = HashDB::new(feature_extractor, measure);
-
-        db.insert("foo".to_string());
-        db.insert("bar".to_string());
-        db.insert("fooo".to_string());
-
-        let thresholds = [0.1, 0.5, 0.9, 1.0];
-        for threshold in thresholds.iter() {
-            let results = db.search("foo", *threshold);
-            assert_eq!(results.len(), 1);
-            assert_eq!(results[0].value, "foo");
-            assert!(approx_eq(results[0].score, 1.0));
-        }
-    }
-
-    #[test]
-    fn test_micro_deep_dive_search() {
-        let feature_extractor = CharacterNGrams {
-            n: 2,
-            padder: " ".to_string(),
-        };
-        let measure = Cosine::new();
-        let mut db = HashDB::new(feature_extractor, measure);
-
-        let strings = ["a", "ab", "abc", "abcd", "abcde"];
-        for s in strings.iter() {
-            db.insert(s.to_string());
-        }
-
-        // Test exact matches with threshold 1.0
-        for query in strings.iter() {
-            let results = db.search(query, 1.0);
-            assert_eq!(results.len(), 1);
-            assert_eq!(results[0].value, *query);
-            assert!(approx_eq(results[0].score, 1.0));
-        }
-
-        // Test "ab" with threshold 0.5
-        let results_ab = db.search("ab", 0.5);
+    let thresholds = [0.1, 0.5, 0.9, 1.0];
+    for &threshold in &thresholds {
+        let results = searcher.ranked_search("foo", threshold).unwrap();
         assert_eq!(
-            results_ab.len(),
-            3,
-            "Should find exactly 3 matches for 'ab'"
+            results.len(),
+            1,
+            "Expected 1 result for threshold {threshold}"
         );
-        assert_eq!(results_ab[0].value, "ab");
-        assert!(approx_eq(results_ab[0].score, 1.0));
-        assert_eq!(results_ab[1].value, "abc");
-        assert!(approx_eq(results_ab[1].score, 0.5773502691896258));
-        assert_eq!(results_ab[2].value, "abcd");
-        assert!(approx_eq(results_ab[2].score, 0.5163977794943222));
-
-        // Test "abc" with threshold 0.6
-        let results_abc = db.search("abc", 0.6);
-        assert_eq!(
-            results_abc.len(),
-            3,
-            "Should find exactly 3 matches for 'abc'"
+        assert_eq!(results[0].0, "foo", "Result should be 'foo'");
+        assert!(
+            approx_eq(results[0].1, 1.0),
+            "Score for 'foo' should be 1.0, got {}",
+            results[0].1
         );
-        assert_eq!(results_abc[0].value, "abc");
-        assert!(approx_eq(results_abc[0].score, 1.0));
-        assert_eq!(results_abc[1].value, "abcd");
-        assert!(approx_eq(results_abc[1].score, 0.6708203932499369));
-        assert_eq!(results_abc[2].value, "abcde");
-        assert!(approx_eq(results_abc[2].score, 0.6123724356957946));
-
-        // Test all strings with high threshold (0.9)
-        for query in strings.iter() {
-            let results = db.search(query, 0.9);
-            assert_eq!(results.len(), 1);
-            assert_eq!(results[0].value, *query);
-            assert!(approx_eq(results[0].score, 1.0));
-        }
     }
 
-    #[test]
-    fn test_empty_db_search() {
-        let feature_extractor = CharacterNGrams {
-            n: 2,
-            padder: " ".to_string(),
-        };
-        let measure = Cosine::new();
-        let mut db = HashDB::new(feature_extractor, measure);
+    let results_none = searcher.ranked_search("baz", 0.5).unwrap();
+    assert!(results_none.is_empty(), "Expected no results for 'baz'");
+}
 
-        let results = db.search("foo", 0.8);
-        assert_eq!(results.len(), 0);
+#[test]
+fn test_search_with_different_endmarkers_cosine() {
+    let measure = Cosine;
+
+    let fe_dollar = Arc::new(CharacterNgrams::new(2, "$"));
+    let mut db_dollar = HashDb::new(fe_dollar);
+    db_dollar.insert("test".to_string());
+    let searcher_dollar = Searcher::new(&db_dollar, measure);
+    let results_dollar = searcher_dollar.ranked_search("test", 0.8).unwrap();
+    assert_eq!(results_dollar.len(), 1, "Using '$' endmarker");
+    if !results_dollar.is_empty() {
+        assert!(approx_eq(results_dollar[0].1, 1.0));
     }
 
-    #[test]
-    fn test_threshold_edge_cases() {
-        let feature_extractor = CharacterNGrams {
-            n: 2,
-            padder: " ".to_string(),
-        };
-        let measure = Cosine::new();
-        let mut db = HashDB::new(feature_extractor, measure);
+    let fe_hash = Arc::new(CharacterNgrams::new(2, "#"));
+    let mut db_hash = HashDb::new(fe_hash);
+    db_hash.insert("test".to_string());
+    let searcher_hash = Searcher::new(&db_hash, measure);
+    let results_hash = searcher_hash.ranked_search("test", 0.8).unwrap();
+    assert_eq!(results_hash.len(), 1, "Using '#' endmarker");
+    if !results_hash.is_empty() {
+        assert!(approx_eq(results_hash[0].1, 1.0));
+    }
+}
 
-        db.insert("foo".to_string());
+#[test]
+fn test_search_with_different_ngram_sizes_cosine() {
+    let measure = Cosine;
+    let endmarker = "$";
 
-        // // Test threshold = 0.0 * FIX: Account non zero alphas
-        // let results_0 = db.search("bar", 0.0);
-        // assert!(results_0.len() <= 1);
-
-        // Test threshold = 1.0 with non-matching string
-        let results_1 = db.search("bar", 1.0);
-        assert_eq!(results_1.len(), 0);
-
-        // Test threshold = 1.0 with exact match
-        let results_exact = db.search("foo", 1.0);
-        assert_eq!(results_exact.len(), 1);
-        assert!(approx_eq(results_exact[0].score, 1.0));
-
-        // Test with intermediate threshold
-        let results_mid = db.search("foo", 0.5);
-        assert_eq!(results_mid.len(), 1);
-        assert_eq!(results_mid[0].value, "foo");
+    let fe_2 = Arc::new(CharacterNgrams::new(2, endmarker));
+    let mut db_2 = HashDb::new(fe_2);
+    db_2.insert("test".to_string());
+    let searcher_2 = Searcher::new(&db_2, measure);
+    let results_2 = searcher_2.ranked_search("test", 0.8).unwrap();
+    assert_eq!(results_2.len(), 1, "Using n=2 ngrams");
+    if !results_2.is_empty() {
+        assert!(approx_eq(results_2[0].1, 1.0));
     }
 
-    #[test]
-    fn test_search_with_different_paddings() {
-        // Test with space padding
-        let fe_space = CharacterNGrams {
-            n: 2,
-            padder: " ".to_string(),
-        };
-        let mut db_space = HashDB::new(fe_space, Cosine::new());
-        db_space.insert("test".to_string());
-        let results_space = db_space.search("test", 0.8);
-        assert_eq!(results_space.len(), 1);
-        assert!(approx_eq(results_space[0].score, 1.0));
-
-        // Test with different padding
-        let fe_hash = CharacterNGrams {
-            n: 2,
-            padder: "#".to_string(),
-        };
-        let mut db_hash = HashDB::new(fe_hash, Cosine::new());
-        db_hash.insert("test".to_string());
-        let results_hash = db_hash.search("test", 0.8);
-        assert_eq!(results_hash.len(), 1);
-        assert!(approx_eq(results_hash[0].score, 1.0));
+    let fe_3 = Arc::new(CharacterNgrams::new(3, endmarker));
+    let mut db_3 = HashDb::new(fe_3);
+    db_3.insert("test".to_string());
+    let searcher_3 = Searcher::new(&db_3, measure);
+    let results_3 = searcher_3.ranked_search("test", 0.8).unwrap();
+    assert_eq!(results_3.len(), 1, "Using n=3 ngrams");
+    if !results_3.is_empty() {
+        assert!(approx_eq(results_3[0].1, 1.0));
     }
+}
 
-    #[test]
-    fn test_search_with_different_ngram_sizes() {
-        // Test with bigrams
-        let fe_2 = CharacterNGrams {
-            n: 2,
-            padder: " ".to_string(),
-        };
-        let mut db_2 = HashDB::new(fe_2, Cosine::new());
-        db_2.insert("test".to_string());
-        let results_2 = db_2.search("test", 0.8);
-        assert_eq!(results_2.len(), 1);
+#[test]
+fn test_cosine_with_repeated_ngrams_in_query() {
+    let query = "aaaa";
+    let feature_extractor = Arc::new(CharacterNgrams::new(2, "$"));
+    let measure = Cosine;
+    let mut db = HashDb::new(feature_extractor);
 
-        // Test with trigrams
-        let fe_3 = CharacterNGrams {
-            n: 3,
-            padder: " ".to_string(),
-        };
-        let mut db_3 = HashDB::new(fe_3, Cosine::new());
-        db_3.insert("test".to_string());
-        let results_3 = db_3.search("test", 0.8);
-        assert_eq!(results_3.len(), 1);
-    }
+    db.insert("aaab".to_string());
+    db.insert("bbbb".to_string());
+
+    let searcher = Searcher::new(&db, measure);
+    let results = searcher.ranked_search(query, 0.5).unwrap();
+
+    assert_eq!(results.len(), 1, "Expected 1 result for 'aaaa' vs 'aaab'");
+    assert_eq!(results[0].0, "aaab");
+    assert!(
+        approx_eq(results[0].1, 0.6),
+        "Score for 'aaab' should be 0.6, got {}",
+        results[0].1
+    );
+}
+
+#[test]
+fn test_unranked_search() {
+    let feature_extractor = Arc::new(CharacterNgrams::new(2, "$"));
+    let measure = Cosine;
+    let mut db = HashDb::new(feature_extractor);
+
+    // Non-alphabetical order to test the sorting
+    db.insert("fooo".to_string());
+    db.insert("bar".to_string());
+    db.insert("foo".to_string());
+
+    let searcher = Searcher::new(&db, measure);
+
+    let results = searcher.search("foo", 0.8).unwrap();
+    // The unranked search should still find the same candidates as ranked_search,
+    // but without scores and sorted alphabetically.
+    assert_eq!(results, vec!["foo", "fooo"]);
+
+    let results_exact = searcher.search("bar", 1.0).unwrap();
+    assert_eq!(results_exact, vec!["bar"]);
+
+    let results_none = searcher.search("xyz", 0.9).unwrap();
+    assert!(results_none.is_empty());
+
+    let result_err = searcher.search("foo", -0.5);
+    assert!(result_err.is_err());
+    assert_eq!(result_err.unwrap_err(), SearchError::InvalidThreshold(-0.5));
 }

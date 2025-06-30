@@ -3,6 +3,7 @@ pub mod extractors;
 pub mod measures;
 pub mod search;
 
-pub use crate::database::{HashDB, SimStringDB};
-pub use crate::extractors::{CharacterNGrams, FeatureExtractor, WordNGrams};
-pub use crate::measures::{Cosine, Dice, ExactMatch, Jaccard, Overlap, SimilarityMeasure};
+pub use database::{Database, HashDb};
+pub use extractors::{CharacterNgrams, FeatureExtractor, WordNgrams};
+pub use measures::{Cosine, Dice, ExactMatch, Jaccard, Measure, Overlap};
+pub use search::{SearchError, Searcher};

@@ -29,7 +29,7 @@ Add `simstring_rust` to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-simstring_rust = "0.1.0" # change version accordingly
+simstring_rust = "0.2.0" # change version accordingly
 ```
 
 For the latest features, you can add the master branch by specifying the Git repository:
@@ -48,32 +48,34 @@ To revert to a stable version, ensure your Cargo.toml specifies a specific versi
 Here is a basic example of how to use simstring_rs in your Rust project:
 
 ```Rust
-use simstring_rust::database::HashDB;
-use simstring_rust::extractors::CharacterNGrams;
+use simstring_rust::database::HashDb;
+use simstring_rust::extractors::CharacterNgrams;
 use simstring_rust::measures::Cosine;
+use simstring_rust::Searcher;
+
+use std::sync::Arc;
 
 fn main() {
-    let feature_extractor = CharacterNGrams {
-        n: 2,
-        padder: " ".to_string(),
-    };
-    let measure = Cosine::new();
-    let mut db = HashDB::new(feature_extractor, measure);
+    // 1. Setup the database
+    let feature_extractor = Arc::new(CharacterNgrams::new(2, "$"));
+    let mut db = HashDb::new(feature_extractor);
 
+    // 2. Index some strings
     db.insert("hello".to_string());
     db.insert("help".to_string());
     db.insert("halo".to_string());
     db.insert("world".to_string());
 
-    let threshold = 0.5;
-    let results = db.search("hell", threshold);
+    // 3. Search for strings
+    let measure = Cosine;
+    let searcher = Searcher::new(&db, measure);
+    let query = "hell";
+    let alpha = 0.5;
 
-    if results.is_empty() {
-        println!("No results found with threshold {}", threshold);
-    } else {
-        println!("Results with threshold {}:", threshold);
-        for result in results {
-            println!("Match: '{}' (score: {})", result.value, result.score);
+    if let Ok(results) = searcher.ranked_search(query, alpha) {
+        println!("Found {} results for query '{}'", results.len(), query);
+        for (item, score) in results {
+            println!("- Match: '{}', Score: {:.4}", item, score);
         }
     }
 }

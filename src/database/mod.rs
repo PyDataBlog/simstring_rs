@@ -1,13 +1,21 @@
 mod hashdb;
 
-use crate::measures::SimilarityMeasure;
-use crate::search::SearchResult;
+use crate::extractors::FeatureExtractor;
+use ahash::AHashSet;
+use lasso::{Rodeo, Spur};
+use std::sync::{Arc, Mutex};
 
-pub trait SimStringDB<TMeasure: SimilarityMeasure> {
-    fn insert(&mut self, s: String);
-    fn describe_collection(&self) -> (usize, f64, usize);
-    fn get_max_feature_size(&self) -> i64;
-    fn search(&mut self, query: &str, threshold: f64) -> Vec<SearchResult<String>>;
+pub type StringId = usize;
+
+pub trait Database: Send + Sync {
+    fn insert(&mut self, text: String);
+    fn clear(&mut self);
+    fn lookup_strings(&self, size: usize, feature: Spur) -> Option<&AHashSet<StringId>>;
+    fn get_string(&self, id: StringId) -> Option<&str>;
+    fn get_features(&self, id: StringId) -> Option<&Vec<Spur>>;
+    fn feature_extractor(&self) -> &dyn FeatureExtractor;
+    fn max_feature_len(&self) -> usize;
+    fn interner(&self) -> Arc<Mutex<Rodeo>>;
 }
 
-pub use hashdb::HashDB;
+pub use hashdb::HashDb;

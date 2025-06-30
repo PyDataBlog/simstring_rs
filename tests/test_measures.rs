@@ -1,309 +1,276 @@
-use simstring_rust::database::HashDB;
-use simstring_rust::extractors::CharacterNGrams;
-use simstring_rust::measures::{Cosine, Dice, ExactMatch, Jaccard, Overlap, SimilarityMeasure};
+use lasso::Rodeo;
+use simstring_rust::{
+    CharacterNgrams, Cosine, Database, Dice, ExactMatch, HashDb, Jaccard, Measure, Overlap,
+};
+use std::sync::Arc;
+
+fn approx_eq(a: f64, b: f64) -> bool {
+    (a - b).abs() < 1e-9
+}
 
 #[cfg(test)]
-mod tests {
+mod cosine_tests {
     use super::*;
 
     #[test]
-    fn test_similarity_scores() {
-        let x = vec![
-            ("feature1".to_string(), 1),
-            ("feature2".to_string(), 1),
-            ("feature3".to_string(), 1),
-        ];
-        let y = vec![
-            ("feature1".to_string(), 1),
-            ("feature2".to_string(), 1),
-            ("feature3".to_string(), 2),
-            ("feature4".to_string(), 1),
-        ];
+    fn test_cosine_similarity_score() {
+        let mut interner = Rodeo::default();
+        let cosine = Cosine;
+        let x_str: Vec<String> = ["a", "b", "c"].iter().map(|&s| s.to_string()).collect();
+        let y_str: Vec<String> = ["a", "b", "d", "e"]
+            .iter()
+            .map(|&s| s.to_string())
+            .collect();
 
-        // Dice Similarity
-        let dice = Dice::new();
-        let dice_score = dice.similarity_score(&x, &y);
-        assert!(
-            (dice_score - 0.5714285714285714).abs() < 1e-9,
-            "Expected Dice similarity to be approximately 0.5714285714285714, got {}",
-            dice_score
-        );
+        let x_spurs: Vec<_> = x_str.iter().map(|s| interner.get_or_intern(s)).collect();
+        let y_spurs: Vec<_> = y_str.iter().map(|s| interner.get_or_intern(s)).collect();
 
-        // Jaccard Similarity
-        let jaccard = Jaccard::new();
-        let jaccard_score = jaccard.similarity_score(&x, &y);
-        assert!(
-            (jaccard_score - 0.4).abs() < 1e-9,
-            "Expected Jaccard similarity to be approximately 0.4, got {}",
-            jaccard_score
-        );
+        let score = cosine.similarity(&x_spurs, &y_spurs);
+        assert!(approx_eq(score, 0.5773502691896258));
 
-        // Cosine Similarity
-        let cosine = Cosine::new();
-        let cosine_score = cosine.similarity_score(&x, &y);
-        assert!(
-            (cosine_score - 0.5773502691896258).abs() < 1e-9,
-            "Expected Cosine similarity to be approximately 0.5773502691896258, got {}",
-            cosine_score
-        );
-
-        // Overlap Similarity
-        let overlap = Overlap::new();
-        let overlap_score = overlap.similarity_score(&x, &y);
-        assert!(
-            (overlap_score - 0.6666666666666666).abs() < 1e-9,
-            "Expected Overlap similarity to be approximately 0.6666666666666666, got {}",
-            overlap_score
-        );
-
-        // Exact Match Similarity
-        let exact_match = ExactMatch::new();
-        let exact_match_score = exact_match.similarity_score(&x, &y);
-        assert_eq!(
-            exact_match_score, 0.0,
-            "Expected Exact Match similarity to be 0.0, got {}",
-            exact_match_score
-        );
+        let z_str: Vec<String> = ["a", "b", "c"].iter().map(|&s| s.to_string()).collect();
+        let z_spurs: Vec<_> = z_str.iter().map(|s| interner.get_or_intern(s)).collect();
+        let score_exact = cosine.similarity(&x_spurs, &z_spurs);
+        assert!(approx_eq(score_exact, 1.0));
     }
 
     #[test]
-    fn test_minimum_candidate_feature_size() {
+    fn test_cosine_min_feature_size() {
+        let cosine = Cosine;
         let query_size = 5;
-
-        // Dice Measure
-        let dice = Dice::new();
-        assert_eq!(
-            dice.minimum_feature_size(query_size, 1.0),
-            5,
-            "Expected minimum feature size for Dice (alpha=1.0) to be 5"
-        );
-        assert_eq!(
-            dice.minimum_feature_size(query_size, 0.5),
-            2,
-            "Expected minimum feature size for Dice (alpha=0.5) to be 2"
-        );
-
-        // Jaccard Measure
-        let jaccard = Jaccard::new();
-        assert_eq!(
-            jaccard.minimum_feature_size(query_size, 1.0),
-            5,
-            "Expected minimum feature size for Jaccard (alpha=1.0) to be 5"
-        );
-        assert_eq!(
-            jaccard.minimum_feature_size(query_size, 0.5),
-            3,
-            "Expected minimum feature size for Jaccard (alpha=0.5) to be 3"
-        );
-
-        // Cosine Measure
-        let cosine = Cosine::new();
-        assert_eq!(
-            cosine.minimum_feature_size(query_size, 1.0),
-            5,
-            "Expected minimum feature size for Cosine (alpha=1.0) to be 5"
-        );
-        assert_eq!(
-            cosine.minimum_feature_size(query_size, 0.5),
-            2,
-            "Expected minimum feature size for Cosine (alpha=0.5) to be 2"
-        );
-
-        // Overlap Measure
-        let overlap = Overlap::new();
-        assert_eq!(
-            overlap.minimum_feature_size(query_size, 1.0),
-            1,
-            "Expected minimum feature size for Overlap (alpha=1.0) to be 1"
-        );
-        assert_eq!(
-            overlap.minimum_feature_size(query_size, 0.5),
-            1,
-            "Expected minimum feature size for Overlap (alpha=0.5) to be 1"
-        );
-
-        // Exact Match Measure
-        let exact_match = ExactMatch::new();
-        assert_eq!(
-            exact_match.minimum_feature_size(query_size, 1.0),
-            5,
-            "Expected minimum feature size for Exact Match (alpha=1.0) to be 5"
-        );
-        assert_eq!(
-            exact_match.minimum_feature_size(query_size, 0.5),
-            5,
-            "Expected minimum feature size for Exact Match (alpha=0.5) to be 5"
-        );
+        assert_eq!(cosine.min_feature_size(query_size, 1.0), 5);
+        assert_eq!(cosine.min_feature_size(query_size, 0.5), 2);
     }
 
     #[test]
-    fn test_maximum_candidate_feature_size() {
-        let feature_extractor = CharacterNGrams {
-            n: 3,
-            padder: " ".to_string(),
-        };
-        let measure = Cosine {};
-        let mut db = HashDB::new(feature_extractor, measure);
+    fn test_cosine_max_feature_size() {
+        let cosine = Cosine;
+        let feature_extractor = Arc::new(CharacterNgrams::new(2, "$"));
+        let mut db = HashDb::new(feature_extractor);
+        db.insert("123456789".to_string());
+        assert_eq!(db.max_feature_len(), 10);
+
+        let query_size = 5;
+        assert_eq!(cosine.max_feature_size(query_size, 1.0, &db), 5);
+        assert_eq!(cosine.max_feature_size(query_size, 0.5, &db), 10);
+    }
+
+    #[test]
+    fn test_cosine_minimum_common_feature_count() {
+        let cosine = Cosine;
+        let query_size = 5;
+        assert_eq!(cosine.minimum_common_feature_count(query_size, 5, 1.0), 5);
+        assert_eq!(cosine.minimum_common_feature_count(query_size, 20, 1.0), 10);
+        assert_eq!(cosine.minimum_common_feature_count(query_size, 5, 0.5), 3);
+    }
+}
+
+#[cfg(test)]
+mod dice_tests {
+    use super::*;
+
+    #[test]
+    fn test_dice_similarity_score() {
+        let mut interner = Rodeo::default();
+        let dice = Dice;
+        let x_str: Vec<String> = ["a", "b", "c"].iter().map(|&s| s.to_string()).collect();
+        let y_str: Vec<String> = ["a", "b", "d", "e"]
+            .iter()
+            .map(|&s| s.to_string())
+            .collect();
+
+        let x_spurs: Vec<_> = x_str.iter().map(|s| interner.get_or_intern(s)).collect();
+        let y_spurs: Vec<_> = y_str.iter().map(|s| interner.get_or_intern(s)).collect();
+
+        let score = dice.similarity(&x_spurs, &y_spurs);
+        assert!(approx_eq(score, 0.5714285714285714));
+    }
+
+    #[test]
+    fn test_dice_min_feature_size() {
+        let dice = Dice;
+        let query_size = 5;
+        assert_eq!(dice.min_feature_size(query_size, 1.0), 5);
+        assert_eq!(dice.min_feature_size(query_size, 0.5), 2);
+    }
+
+    #[test]
+    fn test_dice_max_feature_size() {
+        let dice = Dice;
+        let feature_extractor = Arc::new(CharacterNgrams::new(2, "$"));
+        let mut db = HashDb::new(feature_extractor);
+        db.insert("123456789012345".to_string());
+
+        let query_size = 5;
+        assert_eq!(dice.max_feature_size(query_size, 1.0, &db), 5);
+        assert_eq!(dice.max_feature_size(query_size, 0.5, &db), 15);
+    }
+
+    #[test]
+    fn test_dice_minimum_common_feature_count() {
+        let dice = Dice;
+        let query_size = 5;
+        assert_eq!(dice.minimum_common_feature_count(query_size, 5, 1.0), 5);
+        assert_eq!(dice.minimum_common_feature_count(query_size, 5, 0.5), 3);
+    }
+}
+
+#[cfg(test)]
+mod exact_match_tests {
+    use super::*;
+
+    #[test]
+    fn test_exact_match_similarity_score() {
+        let mut interner = Rodeo::default();
+        let measure = ExactMatch;
+
+        let x_spurs: Vec<_> = ["a", "b", "c"]
+            .iter()
+            .map(|s| interner.get_or_intern(s))
+            .collect();
+        let y_spurs: Vec<_> = ["c", "a", "b"]
+            .iter()
+            .map(|s| interner.get_or_intern(s))
+            .collect(); // Same elements, different order
+        let z_spurs: Vec<_> = ["a", "b", "d"]
+            .iter()
+            .map(|s| interner.get_or_intern(s))
+            .collect(); // Different elements
+
+        assert_eq!(measure.similarity(&x_spurs, &y_spurs), 1.0);
+
+        assert_eq!(measure.similarity(&x_spurs, &z_spurs), 0.0);
+    }
+
+    #[test]
+    fn test_exact_match_size_and_overlap_bounds() {
+        let measure = ExactMatch;
+        let query_size = 10;
+
+        assert_eq!(measure.min_feature_size(query_size, 0.5), query_size);
+        assert_eq!(measure.min_feature_size(query_size, 1.0), query_size);
+
+        let feature_extractor = Arc::new(CharacterNgrams::default());
+        let db = HashDb::new(feature_extractor);
+        assert_eq!(measure.max_feature_size(query_size, 0.5, &db), query_size);
+        assert_eq!(measure.max_feature_size(query_size, 1.0, &db), query_size);
+
+        assert_eq!(
+            measure.minimum_common_feature_count(query_size, query_size, 0.5),
+            query_size
+        );
+        assert_eq!(
+            measure.minimum_common_feature_count(query_size, query_size, 1.0),
+            query_size
+        );
+    }
+}
+
+#[cfg(test)]
+mod jaccard_tests {
+    use super::*;
+
+    #[test]
+    fn test_jaccard_similarity_score() {
+        let mut interner = Rodeo::default();
+        let measure = Jaccard;
+        let x_str: Vec<String> = ["a", "b", "c"].iter().map(|s| s.to_string()).collect();
+        let y_str: Vec<String> = ["a", "b", "d", "e"].iter().map(|s| s.to_string()).collect();
+
+        let x_spurs: Vec<_> = x_str.iter().map(|s| interner.get_or_intern(s)).collect();
+        let y_spurs: Vec<_> = y_str.iter().map(|s| interner.get_or_intern(s)).collect();
+
+        let score = measure.similarity(&x_spurs, &y_spurs);
+        assert!(approx_eq(score, 0.4));
+    }
+
+    #[test]
+    fn test_jaccard_min_feature_size() {
+        let measure = Jaccard;
+        let query_size = 5;
+        assert_eq!(measure.min_feature_size(query_size, 1.0), 5);
+        assert_eq!(measure.min_feature_size(query_size, 0.5), 3);
+    }
+
+    #[test]
+    fn test_jaccard_max_feature_size() {
+        let measure = Jaccard;
+        let feature_extractor = Arc::new(CharacterNgrams::default());
+        let mut db = HashDb::new(feature_extractor);
 
         db.insert("foo".to_string());
         db.insert("bar".to_string());
         db.insert("fooo".to_string());
 
         let query_size = 5;
-
-        // Dice Measure
-        let dice = Dice::new();
-        assert_eq!(
-            dice.maximum_feature_size(&db, query_size, 1.0),
-            5,
-            "Expected maximum feature size for Dice (alpha=1.0) to be 5"
-        );
-        assert_eq!(
-            dice.maximum_feature_size(&db, query_size, 0.5),
-            15,
-            "Expected maximum feature size for Dice (alpha=0.5) to be 15"
-        );
-
-        // Jaccard Measure
-        let jaccard = Jaccard::new();
-        assert_eq!(
-            jaccard.maximum_feature_size(&db, query_size, 1.0),
-            5,
-            "Expected maximum feature size for Jaccard (alpha=1.0) to be 5"
-        );
-        assert_eq!(
-            jaccard.maximum_feature_size(&db, query_size, 0.5),
-            10,
-            "Expected maximum feature size for Jaccard (alpha=0.5) to be 10"
-        );
-
-        // Cosine Measure
-        let cosine = Cosine::new();
-        assert_eq!(
-            cosine.maximum_feature_size(&db, query_size, 1.0),
-            5,
-            "Expected maximum feature size for Cosine (alpha=1.0) to be 5"
-        );
-        assert_eq!(
-            cosine.maximum_feature_size(&db, query_size, 0.5),
-            20,
-            "Expected maximum feature size for Cosine (alpha=0.5) to be 20"
-        );
-
-        // Overlap Measure
-        let overlap = Overlap::new();
-        assert_eq!(
-            overlap.maximum_feature_size(&db, query_size, 1.0),
-            6,
-            "Expected maximum feature size for Overlap (alpha=1.0) to be 6"
-        );
-        assert_eq!(
-            overlap.maximum_feature_size(&db, query_size, 0.5),
-            6,
-            "Expected maximum feature size for Overlap (alpha=0.5) to be 6"
-        );
-
-        // Exact Match Measure
-        let exact_match = ExactMatch::new();
-        assert_eq!(
-            exact_match.maximum_feature_size(&db, query_size, 1.0),
-            5,
-            "Expected maximum feature size for Exact Match (alpha=1.0) to be 5"
-        );
-        assert_eq!(
-            exact_match.maximum_feature_size(&db, query_size, 0.5),
-            5,
-            "Expected maximum feature size for Exact Match (alpha=0.5) to be 5"
-        );
+        assert_eq!(measure.max_feature_size(query_size, 1.0, &db), 5);
+        assert_eq!(measure.max_feature_size(query_size, 0.5, &db), 10);
     }
 
     #[test]
-    fn test_minimum_feature_overlap() {
+    fn test_jaccard_minimum_common_feature_count() {
+        let measure = Jaccard;
+        let query_size = 5;
+        assert_eq!(measure.minimum_common_feature_count(query_size, 5, 1.0), 5);
+        assert_eq!(measure.minimum_common_feature_count(query_size, 5, 0.5), 4);
+    }
+}
+
+#[cfg(test)]
+mod overlap_tests {
+    use super::*;
+
+    #[test]
+    fn test_overlap_similarity_score() {
+        let mut interner = Rodeo::default();
+        let measure = Overlap;
+        let x_spurs: Vec<_> = ["a", "b", "c"]
+            .iter()
+            .map(|s| interner.get_or_intern(s))
+            .collect();
+        let y_spurs: Vec<_> = ["a", "b", "d", "e"]
+            .iter()
+            .map(|s| interner.get_or_intern(s))
+            .collect();
+
+        // intersection is 2, min_len is 3. score = 2/3
+        let score = measure.similarity(&x_spurs, &y_spurs);
+        assert!(approx_eq(score, 2.0 / 3.0));
+
+        let z_spurs: Vec<_> = ["a", "b", "c"]
+            .iter()
+            .map(|s| interner.get_or_intern(s))
+            .collect();
+        let score_exact = measure.similarity(&x_spurs, &z_spurs);
+        assert!(approx_eq(score_exact, 1.0));
+    }
+
+    #[test]
+    fn test_overlap_min_feature_size() {
+        let measure = Overlap;
+        let query_size = 5;
+        assert_eq!(measure.min_feature_size(query_size, 1.0), 1);
+        assert_eq!(measure.min_feature_size(query_size, 0.5), 1);
+    }
+
+    #[test]
+    fn test_overlap_max_feature_size() {
+        let measure = Overlap;
+        let feature_extractor = Arc::new(CharacterNgrams::new(3, "$"));
+        let mut db = HashDb::new(feature_extractor);
+        db.insert("fooo".to_string()); // feature length is 6
         let query_size = 5;
 
-        // Dice Measure
-        let dice = Dice::new();
-        assert_eq!(
-            dice.minimum_overlap(query_size, 5, 1.0),
-            5,
-            "Expected minimum overlap for Dice (query_size=5, candidate_size=5, alpha=1.0) to be 5"
-        );
-        assert_eq!(
-            dice.minimum_overlap(query_size, 20, 1.0),
-            13,
-            "Expected minimum overlap for Dice (query_size=5, candidate_size=20, alpha=1.0) to be 13"
-        );
-        assert_eq!(
-            dice.minimum_overlap(query_size, 5, 0.5),
-            3,
-            "Expected minimum overlap for Dice (query_size=5, candidate_size=5, alpha=0.5) to be 3"
-        );
+        assert_eq!(measure.max_feature_size(query_size, 1.0, &db), 6);
+        assert_eq!(measure.max_feature_size(query_size, 0.5, &db), 6);
+    }
 
-        // Jaccard Measure
-        let jaccard = Jaccard::new();
-        assert_eq!(
-            jaccard.minimum_overlap(query_size, 5, 1.0),
-            5,
-            "Expected minimum overlap for Jaccard (query_size=5, candidate_size=5, alpha=1.0) to be 5"
-        );
-        assert_eq!(
-            jaccard.minimum_overlap(query_size, 20, 1.0),
-            13,
-            "Expected minimum overlap for Jaccard (query_size=5, candidate_size=20, alpha=1.0) to be 13"
-        );
-        assert_eq!(
-            jaccard.minimum_overlap(query_size, 5, 0.5),
-            4,
-            "Expected minimum overlap for Jaccard (query_size=5, candidate_size=5, alpha=0.5) to be 4"
-        );
-
-        // Cosine Measure
-        let cosine = Cosine::new();
-        assert_eq!(
-            cosine.minimum_overlap(query_size, 5, 1.0),
-            5,
-            "Expected minimum overlap for Cosine (query_size=5, candidate_size=5, alpha=1.0) to be 5"
-        );
-        assert_eq!(
-            cosine.minimum_overlap(query_size, 20, 1.0),
-            10,
-            "Expected minimum overlap for Cosine (query_size=5, candidate_size=20, alpha=1.0) to be 10"
-        );
-        assert_eq!(
-            cosine.minimum_overlap(query_size, 5, 0.5),
-            3,
-            "Expected minimum overlap for Cosine (query_size=5, candidate_size=5, alpha=0.5) to be 3"
-        );
-
-        // Overlap Measure
-        let overlap = Overlap::new();
-        assert_eq!(
-            overlap.minimum_overlap(query_size, 5, 1.0),
-            5,
-            "Expected minimum overlap for Overlap (query_size=5, candidate_size=5, alpha=1.0) to be 5"
-        );
-        assert_eq!(
-            overlap.minimum_overlap(query_size, 20, 1.0),
-            5,
-            "Expected minimum overlap for Overlap (query_size=5, candidate_size=20, alpha=1.0) to be 5"
-        );
-        assert_eq!(
-            overlap.minimum_overlap(query_size, 5, 0.5),
-            3,
-            "Expected minimum overlap for Overlap (query_size=5, candidate_size=5, alpha=0.5) to be 3"
-        );
-
-        // Exact Match Measure
-        let exact_match = ExactMatch::new();
-        assert_eq!(
-            exact_match.minimum_overlap(query_size, 5, 1.0),
-            5,
-            "Expected minimum overlap for Exact Match (query_size=5, candidate_size=5, alpha=1.0) to be 5"
-        );
-        assert_eq!(
-            exact_match.minimum_overlap(query_size, 20, 1.0),
-            5,
-            "Expected minimum overlap for Exact Match (query_size=5, candidate_size=20, alpha=1.0) to be 5"
-        );
+    #[test]
+    fn test_overlap_minimum_common_feature_count() {
+        let measure = Overlap;
+        let query_size = 5;
+        assert_eq!(measure.minimum_common_feature_count(query_size, 5, 1.0), 5);
+        assert_eq!(measure.minimum_common_feature_count(query_size, 20, 1.0), 5);
+        assert_eq!(measure.minimum_common_feature_count(query_size, 5, 0.5), 3);
     }
 }

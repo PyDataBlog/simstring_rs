@@ -1,50 +1,49 @@
-use super::FeatureExtractor;
-use std::collections::HashMap;
+use crate::FeatureExtractor;
+use lasso::{Rodeo, Spur};
 
-pub struct WordNGrams {
-    pub n: usize,
-    pub splitter: String,
-    pub padder: String,
+pub struct WordNgrams {
+    n: usize,
+    splitter: String,
+    padder: String,
 }
 
-impl FeatureExtractor for WordNGrams {
-    fn extract(&self, s: &str) -> Vec<(String, i32)> {
-        let mut words: Vec<String> = s.split(&self.splitter).map(|w| w.to_string()).collect();
-        pad_vector(&mut words, &self.padder);
-
-        let ngrams = init_word_ngrams(&words, self.n);
-        count_word_ngrams(ngrams)
+impl WordNgrams {
+    pub fn new(n: usize, splitter: &str, padder: &str) -> Self {
+        Self {
+            n,
+            splitter: splitter.to_string(),
+            padder: padder.to_string(),
+        }
     }
 }
 
-fn pad_vector(vec: &mut Vec<String>, padder: &str) {
-    vec.insert(0, padder.to_string());
-    vec.push(padder.to_string());
+impl Default for WordNgrams {
+    fn default() -> Self {
+        Self::new(2, " ", " ")
+    }
 }
 
-fn init_word_ngrams(words: &[String], n: usize) -> Vec<String> {
-    let mut ngrams = Vec::new();
-    let len = words.len();
-    if len < n {
-        return ngrams;
-    }
-    for i in 0..=len - n {
-        let ngram_words = &words[i..i + n];
-        let ngram = ngram_words.join(" ");
-        ngrams.push(ngram);
-    }
-    ngrams
-}
+impl FeatureExtractor for WordNgrams {
+    fn features(&self, text: &str, interner: &mut Rodeo) -> Vec<Spur> {
+        if self.n == 0 {
+            return vec![];
+        }
 
-fn count_word_ngrams(ngrams: Vec<String>) -> Vec<(String, i32)> {
-    let mut counter = HashMap::new();
-    let mut result = Vec::with_capacity(ngrams.len());
+        let tokens: Vec<&str> = text
+            .split(&self.splitter)
+            .filter(|s| !s.is_empty())
+            .collect();
+        let mut padded_tokens: Vec<&str> = Vec::with_capacity(tokens.len() + 2);
 
-    for ngram in ngrams {
-        let count = counter.entry(ngram.clone()).or_insert(0);
-        *count += 1;
-        result.push((ngram, *count));
+        padded_tokens.push(&self.padder);
+        padded_tokens.extend_from_slice(&tokens);
+        padded_tokens.push(&self.padder);
+
+        let ngrams: Vec<String> = padded_tokens
+            .windows(self.n)
+            .map(|window| window.join(" "))
+            .collect();
+
+        super::append_feature_counts(interner, ngrams)
     }
-
-    result
 }

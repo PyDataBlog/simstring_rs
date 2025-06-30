@@ -1,46 +1,45 @@
-use crate::SimStringDB;
-use std::collections::HashSet;
+use super::Measure;
+use crate::database::Database;
+use ahash::AHashSet;
+use lasso::Spur;
 
-use super::SimilarityMeasure;
-
+#[derive(Default, Clone, Copy)]
 pub struct Jaccard;
 
-impl Default for Jaccard {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl Jaccard {
-    pub fn new() -> Self {
-        Jaccard
-    }
-}
-
-impl SimilarityMeasure for Jaccard {
-    fn minimum_feature_size(&self, query_size: i64, alpha: f64) -> i64 {
-        (alpha * query_size as f64).ceil() as i64
+impl Measure for Jaccard {
+    fn min_feature_size(&self, query_size: usize, alpha: f64) -> usize {
+        (alpha * query_size as f64).ceil() as usize
     }
 
-    fn maximum_feature_size<TMeasure: SimilarityMeasure>(
-        &self,
-        _db: &impl SimStringDB<TMeasure>,
-        query_size: i64,
-        alpha: f64,
-    ) -> i64 {
-        (query_size as f64 / alpha).floor() as i64
+    fn max_feature_size(&self, query_size: usize, alpha: f64, _db: &dyn Database) -> usize {
+        (query_size as f64 / alpha).floor() as usize
     }
 
-    fn similarity_score(&self, x: &[(String, i32)], y: &[(String, i32)]) -> f64 {
-        let set_x: HashSet<_> = x.iter().collect();
-        let set_y: HashSet<_> = y.iter().collect();
-
-        let intersection_count = set_x.intersection(&set_y).count() as f64;
-        let union_intersection_count = set_x.union(&set_y).count() as f64;
-        intersection_count / union_intersection_count
+    fn minimum_common_feature_count(&self, query_size: usize, y_size: usize, alpha: f64) -> usize {
+        if alpha == -1.0 {
+            return 0;
+        }
+        ((alpha * (query_size as f64 + y_size as f64)) / (1.0 + alpha)).ceil() as usize
     }
 
-    fn minimum_overlap(&self, query_size: i64, candidate_size: i64, alpha: f64) -> i64 {
-        ((alpha * (query_size + candidate_size) as f64) / (1. + alpha)).ceil() as i64
+    fn similarity(&self, x: &[Spur], y: &[Spur]) -> f64 {
+        let x_set: AHashSet<_> = x.iter().collect();
+        let y_set: AHashSet<_> = y.iter().collect();
+
+        if x_set.is_empty() && y_set.is_empty() {
+            return 1.0;
+        }
+        if x_set.is_empty() || y_set.is_empty() {
+            return 0.0;
+        }
+
+        let intersection_size = x_set.intersection(&y_set).count() as f64;
+        let union_size = x_set.union(&y_set).count() as f64;
+
+        if union_size == 0.0 {
+            0.0
+        } else {
+            intersection_size / union_size
+        }
     }
 }

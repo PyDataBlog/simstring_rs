@@ -1,48 +1,40 @@
-use crate::SimStringDB;
-use std::collections::HashSet;
+use super::Measure;
+use crate::database::Database;
+use ahash::AHashSet;
+use lasso::Spur;
 
-use super::SimilarityMeasure;
-
+#[derive(Default, Clone, Copy)]
 pub struct ExactMatch;
 
-impl Default for ExactMatch {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl ExactMatch {
-    pub fn new() -> Self {
-        ExactMatch
-    }
-}
-
-impl SimilarityMeasure for ExactMatch {
-    fn minimum_feature_size(&self, query_size: i64, _alpha: f64) -> i64 {
+impl Measure for ExactMatch {
+    fn min_feature_size(&self, query_size: usize, _alpha: f64) -> usize {
         query_size
     }
 
-    fn maximum_feature_size<TMeasure: SimilarityMeasure>(
+    fn max_feature_size(&self, query_size: usize, _alpha: f64, _db: &dyn Database) -> usize {
+        query_size
+    }
+
+    fn minimum_common_feature_count(
         &self,
-        _db: &impl SimStringDB<TMeasure>,
-        query_size: i64,
+        query_size: usize,
+        _y_size: usize,
         _alpha: f64,
-    ) -> i64 {
+    ) -> usize {
         query_size
     }
 
-    fn similarity_score(&self, x: &[(String, i32)], y: &[(String, i32)]) -> f64 {
-        let set_x: HashSet<_> = x.iter().collect();
-        let set_y: HashSet<_> = y.iter().collect();
+    fn similarity(&self, x: &[Spur], y: &[Spur]) -> f64 {
+        if x.len() != y.len() {
+            return 0.0;
+        }
+        let x_set: AHashSet<_> = x.iter().collect();
+        let y_set: AHashSet<_> = y.iter().collect();
 
-        if set_x == set_y {
+        if x_set == y_set {
             1.0
         } else {
             0.0
         }
-    }
-
-    fn minimum_overlap(&self, query_size: i64, _candidate_size: i64, _alphaa: f64) -> i64 {
-        query_size
     }
 }

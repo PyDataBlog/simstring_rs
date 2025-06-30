@@ -4,21 +4,17 @@ mod exact_match;
 mod jaccard;
 mod overlap;
 
-use crate::database::SimStringDB;
+use crate::database::Database;
+use lasso::Spur;
 
-pub trait SimilarityMeasure {
-    fn minimum_feature_size(&self, query_size: i64, alpha: f64) -> i64;
-
-    fn maximum_feature_size<TMeasure: SimilarityMeasure>(
-        &self,
-        db: &impl SimStringDB<TMeasure>,
-        query_size: i64,
-        alpha: f64,
-    ) -> i64;
-
-    fn similarity_score(&self, x: &[(String, i32)], y: &[(String, i32)]) -> f64;
-
-    fn minimum_overlap(&self, query_size: i64, candidate_size: i64, alpha: f64) -> i64;
+/// Must be Send + Sync to be used in parallel search.
+pub trait Measure: Send + Sync {
+    fn min_feature_size(&self, query_size: usize, alpha: f64) -> usize;
+    fn max_feature_size(&self, query_size: usize, alpha: f64, db: &dyn Database) -> usize;
+    fn minimum_common_feature_count(&self, query_size: usize, y_size: usize, alpha: f64) -> usize;
+    // TODO: Current similarity allocates back to sets for easy set operations. Look at avoiding
+    // this for all measures
+    fn similarity(&self, x: &[Spur], y: &[Spur]) -> f64;
 }
 
 pub use cosine::Cosine;

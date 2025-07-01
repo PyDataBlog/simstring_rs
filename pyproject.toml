@@ -1,0 +1,27 @@
+[build-system]
+requires = ["maturin>=1.0,<2.0"]
+build-backend = "maturin"
+
+[project]
+name = "simstring-rust"
+# The version is automatically read from Cargo.toml
+description = "A fast, native Rust implementation of the SimString algorithm with Python bindings."
+readme = "README.md"
+license = { text = "MIT" }
+authors = [
+    { name = "Bernard Brenyah", email = "bbrenyah@gmail.com" }
+]
+keywords = ["string-matching", "nlp", "simstring", "fuzzy"]
+classifiers = [
+    "Programming Language :: Rust",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Topic :: Text Processing",
+]
+requires-python = ">=3.10"
+
+[project.urls]
+Homepage = "https://github.com/PyDataBlog/simstring_rs"
+Repository = "https://github.com/PyDataBlog/simstring_rs"

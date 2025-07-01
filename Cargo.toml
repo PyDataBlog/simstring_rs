@@ -9,18 +9,20 @@ edition = "2021"
 authors = ["Bernard Brenyah <bbrenyah@gmail.com>"]
 keywords = ["string-matching", "nlp", "simstring", "cpmerge"]
 categories = ["text-processing"]
-homepage = "https://github.com/PyDataBlog/simstring_rs#readme"
+homepage = "https://github.com/PyDataBlog/simstring_rs"
 readme = "README.md"
 
 [lib]
 name = "simstring_rust"
 path = "src/lib.rs"
+crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 rayon = "1.10"
 ahash = "0.8"
 lasso = "0.7"
 thiserror = "2"
+pyo3 = { version = "0.25", features = ["extension-module"] }
 
 [dev-dependencies]
 criterion = { version = "0.6", features = ["html_reports"] }

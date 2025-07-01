@@ -1,6 +1,6 @@
 [package]
 name = "simstring_rust"
-version = "0.2.0"
+version = "0.3.0"
 description = "A native Rust implementation of the SimString algorithm"
 license = "MIT"
 repository = "https://github.com/PyDataBlog/simstring_rs"
@@ -23,6 +23,9 @@ ahash = "0.8"
 lasso = "0.7"
 thiserror = "2"
 pyo3 = { version = "0.25", features = ["extension-module"] }
+
+[build-dependencies]
+pyo3-build-config = "0.25"
 
 [dev-dependencies]
 criterion = { version = "0.6", features = ["html_reports"] }

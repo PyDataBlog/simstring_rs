@@ -1,6 +1,7 @@
 use crate::FeatureExtractor;
 use lasso::{Rodeo, Spur};
 
+#[derive(Clone)]
 pub struct WordNgrams {
     n: usize,
     splitter: String,

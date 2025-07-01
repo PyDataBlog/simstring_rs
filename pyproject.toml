@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "simstring-rust"
-# The version is automatically read from Cargo.toml
+dynamic = ["version"]
 description = "A fast, native Rust implementation of the SimString algorithm with Python bindings."
 readme = "README.md"
 license = { text = "MIT" }

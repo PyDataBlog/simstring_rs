@@ -1,3 +1,11 @@
+# simstring-rust
+
+## v0.3.0
+
+### Features
+
+- feat: python bindings for project
+
 ## v0.2.0
 
 ### Features

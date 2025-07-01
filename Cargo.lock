@@ -569,13 +569,14 @@ dependencies = [
 
 [[package]]
 name = "simstring_rust"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "ahash",
  "criterion",
  "lasso",
  "num_cpus",
  "pyo3",
+ "pyo3-build-config",
  "rayon",
  "thiserror",
 ]

@@ -61,6 +61,20 @@ jobs:
           echo "Running Python Benchmarks..."
           uv run benches/bench.py
 
+      - name: Run Python Rust Bindings Benchmarks
+        run: |
+          pip install uv
+          uv venv
+          if [ "$RUNNER_OS" == "Windows" ]; then
+            source .venv/Scripts/activate
+          else
+            source .venv/bin/activate
+          fi
+          uv pip install maturin
+          maturin build --release
+          echo "Running Python Benchmarks..."
+          python benches/bench_rust.py
+
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:

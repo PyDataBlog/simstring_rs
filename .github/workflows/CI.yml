@@ -72,6 +72,7 @@ jobs:
           fi
           uv pip install maturin
           maturin build --release
+          uv pip install -e .
           echo "Running Python Benchmarks..."
           python benches/bench_rust.py
 

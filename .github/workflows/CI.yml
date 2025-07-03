@@ -162,7 +162,7 @@ jobs:
           uv venv
           source .venv/bin/activate
           uv pip install maturin pytest
-          maturin build --release
+          maturin develop
           pytest tests/python/ -vv
 
       - name: Build
@@ -204,7 +204,7 @@ jobs:
           uv venv
           source .venv/bin/activate
           uv pip install maturin
-          maturin build --release
+          maturin develop
           python examples/python_basic.py
 
   # Publish to crates.io on new tags

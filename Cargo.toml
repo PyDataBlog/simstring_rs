@@ -22,7 +22,7 @@ rayon = "1.10"
 ahash = "0.8"
 lasso = "0.7"
 thiserror = "2"
-pyo3 = { version = "0.25", features = ["extension-module"] }
+pyo3 = { version = "0.25", features = ["extension-module", "abi3-py37"] }
 
 [build-dependencies]
 pyo3-build-config = "0.25"

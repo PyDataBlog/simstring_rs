@@ -1,12 +1,10 @@
 import time
 
-from simstring_rust import (
-    CharacterNgrams,
-    Cosine,
-    HashDb,
-    Searcher,
-    SearchError,
-)
+from simstring_rust.database import HashDb
+from simstring_rust.errors import SearchError
+from simstring_rust.extractors import CharacterNgrams
+from simstring_rust.measures import Cosine
+from simstring_rust.searcher import Searcher
 
 
 def main():

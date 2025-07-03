@@ -262,15 +262,46 @@ impl PySearcher {
 
 #[pymodule]
 fn simstring_rust(py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
-    m.add_class::<PyCharacterNgrams>()?;
-    m.add_class::<PyWordNgrams>()?;
-    m.add_class::<PyHashDb>()?;
-    m.add_class::<PySearcher>()?;
-    m.add_class::<PyCosine>()?;
-    m.add_class::<PyDice>()?;
-    m.add_class::<PyJaccard>()?;
-    m.add_class::<PyOverlap>()?;
-    m.add_class::<PyExactMatch>()?;
-    m.add("SearchError", py.get_type::<SearchError>())?;
+    // Database submodule
+    let database_module = PyModule::new(py, "database")?;
+    database_module.add_class::<PyHashDb>()?;
+    m.add_submodule(&database_module)?;
+
+    // Extractors submodule
+    let extractors_module = PyModule::new(py, "extractors")?;
+    extractors_module.add_class::<PyCharacterNgrams>()?;
+    extractors_module.add_class::<PyWordNgrams>()?;
+    m.add_submodule(&extractors_module)?;
+
+    // Measures submodule
+    let measures_module = PyModule::new(py, "measures")?;
+    measures_module.add_class::<PyCosine>()?;
+    measures_module.add_class::<PyDice>()?;
+    measures_module.add_class::<PyJaccard>()?;
+    measures_module.add_class::<PyOverlap>()?;
+    measures_module.add_class::<PyExactMatch>()?;
+    m.add_submodule(&measures_module)?;
+
+    // Searcher submodule
+    let searcher_module = PyModule::new(py, "searcher")?;
+    searcher_module.add_class::<PySearcher>()?;
+    m.add_submodule(&searcher_module)?;
+
+    // errors submodule
+    let errors_module = PyModule::new(py, "errors")?;
+    errors_module.add("SearchError", py.get_type::<SearchError>())?;
+    m.add_submodule(&errors_module)?;
+
+    // Add modules to sys.modules to allow direct import
+    let sys = PyModule::import(py, "sys")?;
+    let modules = sys
+        .getattr("modules")?
+        .downcast_into::<pyo3::types::PyDict>()?;
+    modules.set_item("simstring_rust.database", database_module)?;
+    modules.set_item("simstring_rust.extractors", extractors_module)?;
+    modules.set_item("simstring_rust.measures", measures_module)?;
+    modules.set_item("simstring_rust.searcher", searcher_module)?;
+    modules.set_item("simstring_rust.errors", errors_module)?;
+
     Ok(())
 }

@@ -5,3 +5,4 @@ Session.vim
 bench
 .venv
 uv.lock
+tests/python/__pycache__

@@ -1,14 +1,12 @@
-import statistics
 import time
 from pathlib import Path
+from statistics import mean, stdev
 from typing import Callable
 
-from simstring_rust import (
-    CharacterNgrams,
-    Cosine,
-    HashDb,
-    Searcher,
-)
+from simstring_rust.database import HashDb
+from simstring_rust.extractors import CharacterNgrams
+from simstring_rust.measures import Cosine
+from simstring_rust.searcher import Searcher
 
 
 def create_database(ngrams_size: int) -> HashDb:
@@ -54,8 +52,8 @@ def bench_insert():
             measurements.append(duration)
             iteration += 1
 
-        mean_time = statistics.mean(measurements)
-        stddev = statistics.stdev(measurements) if len(measurements) > 1 else 0
+        mean_time = mean(measurements)
+        stddev = stdev(measurements) if len(measurements) > 1 else 0
 
         print(f"ngram_{ngram_size}:")
         print(f"  Mean: {mean_time * 1000:.2f}ms")
@@ -91,15 +89,14 @@ def bench_search():
 
                 def benchmark_iteration():
                     for term in search_terms:
-                        # ranked_search method is the same
                         searcher.ranked_search(term, threshold)
 
                 duration = measure_time(benchmark_iteration)
                 measurements.append(duration)
                 iteration += 1
 
-            mean_time = statistics.mean(measurements)
-            stddev = statistics.stdev(measurements) if len(measurements) > 1 else 0
+            mean_time = mean(measurements)
+            stddev = stdev(measurements) if len(measurements) > 1 else 0
 
             print(f"ngram_{ngram_size} (threshold={threshold}):")
             print(f"  Mean: {mean_time * 1000:.2f}ms")

@@ -6,6 +6,12 @@
 
 - feat: python bindings for project
 
+### Other
+
+- chore(ci): Added unit tests for python bindings
+- chore(ci): Added job to run examples for the project
+- chore(bindings): Added an example for the python example
+
 ## v0.2.0
 
 ### Features
@@ -20,7 +26,7 @@
 
 ### Other
 
-- added order indipendence test (#12)
+- added order independence test (#12)
 
 ## v0.1.2
 

@@ -4,3 +4,5 @@ Session.vim
 .DS_Store
 bench
 .venv
+uv.lock
+tests/python/__pycache__

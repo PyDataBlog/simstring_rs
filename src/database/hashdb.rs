@@ -7,7 +7,7 @@ use std::sync::{Arc, Mutex};
 
 pub struct HashDb {
     feature_extractor: Arc<dyn FeatureExtractor>,
-    strings: Vec<String>,
+    pub strings: Vec<String>,
     string_features: Vec<Vec<Spur>>,
     feature_map: AHashMap<usize, AHashMap<Spur, AHashSet<StringId>>>,
     interner: Arc<Mutex<Rodeo>>,

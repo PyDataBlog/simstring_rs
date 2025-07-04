@@ -1,6 +1,7 @@
 use crate::FeatureExtractor;
 use lasso::{Rodeo, Spur};
 
+#[derive(Clone)]
 pub struct CharacterNgrams {
     n: usize,
     endmarker: String,

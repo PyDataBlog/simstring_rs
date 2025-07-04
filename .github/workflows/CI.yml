@@ -52,10 +52,29 @@ jobs:
         run: |
           pip install uv
           uv venv
-          source .venv/bin/activate
+          if [ "$RUNNER_OS" == "Windows" ]; then
+            source .venv/Scripts/activate
+          else
+            source .venv/bin/activate
+          fi
           uv pip install simstring-fast
           echo "Running Python Benchmarks..."
           uv run benches/bench.py
+
+      - name: Run Python Rust Bindings Benchmarks
+        run: |
+          pip install uv
+          uv venv
+          if [ "$RUNNER_OS" == "Windows" ]; then
+            source .venv/Scripts/activate
+          else
+            source .venv/bin/activate
+          fi
+          uv pip install maturin
+          maturin build --release
+          uv pip install -e .
+          echo "Running Python Benchmarks..."
+          python benches/bench_rust.py
 
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
@@ -130,6 +149,11 @@ jobs:
           key: ${{ runner.os }}-${{ matrix.target }}-cargo-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: ${{ runner.os }}-${{ matrix.target }}-cargo-
 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
       - name: Check formatting
         run: cargo fmt --all -- --check
 
@@ -149,6 +173,20 @@ jobs:
         if: matrix.target == 'aarch64-unknown-linux-gnu'
         run: cross test --target ${{ matrix.target }} --verbose
 
+      - name: Run Python binding tests
+        shell: bash
+        run: |
+          pip install uv
+          uv venv
+          if [ "$RUNNER_OS" == "Windows" ]; then
+            source .venv/Scripts/activate
+          else
+            source .venv/bin/activate
+          fi
+          uv pip install maturin pytest
+          maturin develop
+          pytest tests/python/ -vv
+
       - name: Build
         if: matrix.target != 'aarch64-unknown-linux-gnu'
         run: cargo build --target ${{ matrix.target }} --verbose
@@ -157,12 +195,40 @@ jobs:
         if: matrix.target == 'aarch64-unknown-linux-gnu'
         run: cross build --target ${{ matrix.target }} --verbose
 
-      # Documentation check
       - name: Check documentation
         run: cargo doc --no-deps --document-private-items
 
-      - name: Run benchmarks
-        run: cargo bench --verbose
+  run-examples:
+    name: Run Examples
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Run Rust example
+        run: cargo run --example basic --release
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Run Python example
+        shell: bash
+        run: |
+          pip install uv
+          uv venv
+          if [ "$RUNNER_OS" == "Windows" ]; then
+            source .venv/Scripts/activate
+          else
+            source .venv/bin/activate
+          fi
+          uv pip install maturin
+          maturin develop
+          python examples/python_basic.py
 
   # Publish to crates.io on new tags
   publish:

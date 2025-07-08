@@ -4,6 +4,7 @@
 # ]
 # ///
 
+import json
 import statistics
 import time
 import typing as t
@@ -33,13 +34,10 @@ def load_company_names() -> list[str]:
         return [line.strip() for line in f]
 
 
-def bench_insert():
+def bench_insert(results: list):
     company_names = load_company_names()
     iterations = 100
     measurement_time = 20
-
-    print("\nBenchmarking database insertions:")
-    print("-" * 40)
 
     for ngram_size in [2, 3, 4]:
         measurements = []
@@ -60,21 +58,27 @@ def bench_insert():
         mean_time = statistics.mean(measurements)
         stddev = statistics.stdev(measurements) if len(measurements) > 1 else 0
 
-        print(f"ngram_{ngram_size}:")
-        print(f"  Mean: {mean_time * 1000:.2f}ms")
-        print(f"  Std Dev: {stddev * 1000:.2f}ms")
-        print(f"  Iterations: {len(measurements)}")
+        results.append(
+            {
+                "language": "python",
+                "backend": "simstring-fast",
+                "benchmark": "insert",
+                "parameters": {"ngram_size": ngram_size},
+                "stats": {
+                    "mean": mean_time * 1000,
+                    "stddev": stddev * 1000,
+                    "iterations": len(measurements),
+                },
+            }
+        )
 
 
-def bench_search():
+def bench_search(results: list):
     company_names = load_company_names()
-    search_terms = company_names[:100]  # Use first 100 companies as search terms
+    search_terms = company_names[:100]
     iterations = 100
     measurement_time = 20
     similarity_thresholds = [0.6, 0.7, 0.8, 0.9]
-
-    print("\nBenchmarking database searches:")
-    print("-" * 40)
 
     for ngram_size in [2, 3, 4]:
         db = create_database(ngram_size)
@@ -103,12 +107,23 @@ def bench_search():
             mean_time = statistics.mean(measurements)
             stddev = statistics.stdev(measurements) if len(measurements) > 1 else 0
 
-            print(f"ngram_{ngram_size} (threshold={threshold}):")
-            print(f"  Mean: {mean_time * 1000:.2f}ms")
-            print(f"  Std Dev: {stddev * 1000:.2f}ms")
-            print(f"  Iterations: {len(measurements)}")
+            results.append(
+                {
+                    "language": "python",
+                    "backend": "simstring-fast",
+                    "benchmark": "search",
+                    "parameters": {"ngram_size": ngram_size, "threshold": threshold},
+                    "stats": {
+                        "mean": mean_time * 1000,
+                        "stddev": stddev * 1000,
+                        "iterations": len(measurements),
+                    },
+                }
+            )
 
 
 if __name__ == "__main__":
-    bench_insert()
-    bench_search()
+    results = []
+    bench_insert(results)
+    bench_search(results)
+    print(json.dumps(results, indent=2))

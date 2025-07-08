@@ -1,3 +1,4 @@
+import json
 import time
 from pathlib import Path
 from statistics import mean, stdev
@@ -28,13 +29,10 @@ def load_company_names() -> list[str]:
         return [line.strip() for line in f]
 
 
-def bench_insert():
+def bench_insert(results: list):
     company_names = load_company_names()
     iterations = 100
     measurement_time = 20
-
-    print("\nBenchmarking database insertions (simstring_rust):")
-    print("-" * 50)
 
     for ngram_size in [2, 3, 4]:
         measurements = []
@@ -53,23 +51,29 @@ def bench_insert():
             iteration += 1
 
         mean_time = mean(measurements)
-        stddev = stdev(measurements) if len(measurements) > 1 else 0
+        stddev_val = stdev(measurements) if len(measurements) > 1 else 0
 
-        print(f"ngram_{ngram_size}:")
-        print(f"  Mean: {mean_time * 1000:.2f}ms")
-        print(f"  Std Dev: {stddev * 1000:.2f}ms")
-        print(f"  Iterations: {len(measurements)}")
+        results.append(
+            {
+                "language": "python",
+                "backend": "simstring-rs",
+                "benchmark": "insert",
+                "parameters": {"ngram_size": ngram_size},
+                "stats": {
+                    "mean": mean_time * 1000,
+                    "stddev": stddev_val * 1000,
+                    "iterations": len(measurements),
+                },
+            }
+        )
 
 
-def bench_search():
+def bench_search(results: list):
     company_names = load_company_names()
     search_terms = company_names[:100]
     iterations = 100
     measurement_time = 20
     similarity_thresholds = [0.6, 0.7, 0.8, 0.9]
-
-    print("\nBenchmarking database searches (simstring_rust):")
-    print("-" * 50)
 
     for ngram_size in [2, 3, 4]:
         db = create_database(ngram_size)
@@ -96,14 +100,25 @@ def bench_search():
                 iteration += 1
 
             mean_time = mean(measurements)
-            stddev = stdev(measurements) if len(measurements) > 1 else 0
+            stddev_val = stdev(measurements) if len(measurements) > 1 else 0
 
-            print(f"ngram_{ngram_size} (threshold={threshold}):")
-            print(f"  Mean: {mean_time * 1000:.2f}ms")
-            print(f"  Std Dev: {stddev * 1000:.2f}ms")
-            print(f"  Iterations: {len(measurements)}")
+            results.append(
+                {
+                    "language": "python",
+                    "backend": "simstring-rs",
+                    "benchmark": "search",
+                    "parameters": {"ngram_size": ngram_size, "threshold": threshold},
+                    "stats": {
+                        "mean": mean_time * 1000,
+                        "stddev": stddev_val * 1000,
+                        "iterations": len(measurements),
+                    },
+                }
+            )
 
 
 if __name__ == "__main__":
-    bench_insert()
-    bench_search()
+    results = []
+    bench_insert(results)
+    bench_search(results)
+    print(json.dumps(results, indent=2))

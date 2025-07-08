@@ -1,5 +1,6 @@
 using BenchmarkTools
 using SimString
+using JSON
 
 function load_companies()
     current_dir = pwd()
@@ -11,10 +12,8 @@ function create_db(ngram_size::Int)
     return SimString.DictDB(SimString.CharacterNGrams(ngram_size, " "))
 end
 
-function bench_insert()
+function bench_insert(results::Vector)
     companies = load_companies()
-    println("\nBenchmarking database insertions:")
-    println(repeat("-", 40))
 
     for ngram_size in [2, 3, 4]
         b = @benchmarkable begin
@@ -27,21 +26,25 @@ function bench_insert()
         result = run(b)
 
         mean_time = mean(result.times) / 1e6  # Convert ns to ms
-        stddev = std(result.times) / 1e6      # Convert ns to ms
+        stddev_time = std(result.times) / 1e6      # Convert ns to ms
 
-        println("ngram_$ngram_size:")
-        println("  Mean: $(round(mean_time, digits=2))ms")
-        println("  Std Dev: $(round(stddev, digits=2))ms")
-        println("  Iterations: $(length(result.times))")
+        push!(results, Dict(
+            "language" => "julia",
+            "backend" => "SimString.jl",
+            "benchmark" => "insert",
+            "parameters" => Dict("ngram_size" => ngram_size),
+            "stats" => Dict(
+                "mean" => mean_time,
+                "stddev" => stddev_time,
+                "iterations" => length(result.times)
+            )
+        ))
     end
 end
 
-function bench_search()
+function bench_search(results::Vector)
     companies = load_companies()
-    search_terms = companies[1:100]  # Use first 100 companies as search terms
-
-    println("\nBenchmarking database searches:")
-    println(repeat("-", 40))
+    search_terms = companies[1:100]
 
     for ngram_size in [2, 3, 4]
         db = create_db(ngram_size)
@@ -59,19 +62,28 @@ function bench_search()
             result = run(b)
 
             mean_time = mean(result.times) / 1e6  # Convert ns to ms
-            stddev = std(result.times) / 1e6      # Convert ns to ms
+            stddev_time = std(result.times) / 1e6      # Convert ns to ms
 
-            println("ngram_$(ngram_size) (threshold=$(threshold)):")
-            println("  Mean: $(round(mean_time, digits=2))ms")
-            println("  Std Dev: $(round(stddev, digits=2))ms")
-            println("  Iterations: $(length(result.times))")
+            push!(results, Dict(
+                "language" => "julia",
+                "backend" => "SimString.jl",
+                "benchmark" => "search",
+                "parameters" => Dict("ngram_size" => ngram_size, "threshold" => threshold),
+                "stats" => Dict(
+                    "mean" => mean_time,
+                    "stddev" => stddev_time,
+                    "iterations" => length(result.times)
+                )
+            ))
         end
     end
 end
 
 function main()
-    bench_insert()
-    bench_search()
+    results = []
+    bench_insert(results)
+    bench_search(results)
+    println(JSON.json(results, 2))
 end
 
 main()

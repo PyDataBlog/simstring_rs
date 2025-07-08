@@ -54,13 +54,13 @@ jobs:
           pip install uv
           uv venv
           source .venv/bin/activate
-          uv pip install simstring-fast pandas maturin
+          uv pip install simstring-fast pandas maturin tabulate
           maturin build --release
           uv pip install target/wheels/*.whl
           # Install ruby dependencies
-          gem install simstring_pure descriptive_statistics
+          gem install simstring_pure descriptive_statistics json
           # Install julia dependencies
-          julia -e 'using Pkg; Pkg.add(["SimString", "BenchmarkTools", "Statistics"])'
+          julia -e 'using Pkg; Pkg.add(["SimString", "BenchmarkTools", "Statistics", "JSON"])'
           # Run benchmarks
           echo "Running and Comparing Benchmarks..."
           python benches/run_benches.py
@@ -235,4 +235,3 @@ jobs:
         run: cargo publish
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
-

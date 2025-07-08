@@ -24,7 +24,6 @@ MANIFEST
 .pytest_cache
 .hypothesis
 /target
-BENCHMARKS.md
 Session.vim
 .vscode/
 .DS_Store

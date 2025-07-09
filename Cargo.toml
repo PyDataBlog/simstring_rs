@@ -38,3 +38,8 @@ harness = false
 
 [profile.release]
 debug = true
+
+[package.metadata.release]
+push = false
+publish = false
+pre-release-commit-message = "chore(release): {{version}}"

@@ -4,6 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "simstring-rust"
+requires-python = ">=3.10"
 dynamic = ["version"]
 description = "A fast, native Rust implementation of the SimString algorithm with Python bindings."
 readme = "README.md"
@@ -16,11 +17,14 @@ classifiers = [
     "Programming Language :: Rust",
     "Programming Language :: Python :: Implementation :: CPython",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
     "License :: OSI Approved :: MIT License",
-    "Operating System :: OS Independent",
-    "Topic :: Text Processing",
+    "Operating System :: POSIX",
+    "Operating System :: MacOS :: MacOS X",
+    "Operating System :: Microsoft :: Windows"
 ]
-requires-python = ">=3.10"
 
 [project.urls]
 Homepage = "https://github.com/PyDataBlog/simstring_rs"

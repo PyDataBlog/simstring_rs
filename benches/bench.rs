@@ -1,15 +1,30 @@
-use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
+use rayon::ThreadPoolBuilder;
+use serde::Serialize;
 use simstring_rust::{CharacterNgrams, Cosine, HashDb, Searcher};
 use std::env;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::Path;
-use std::sync::Arc;
-
-use rayon::ThreadPoolBuilder;
-use std::sync::Once;
+use std::sync::{Arc, Once};
+use std::time::{Duration, Instant};
 
 static INIT_BENCH_RAYON: Once = Once::new();
+
+#[derive(Serialize)]
+struct Stats {
+    mean: f64,
+    stddev: f64,
+    iterations: usize,
+}
+
+#[derive(Serialize)]
+struct BenchmarkResult {
+    language: String,
+    backend: String,
+    benchmark: String,
+    parameters: serde_json::Value,
+    stats: Stats,
+}
 
 fn setup_benchmark_environment() {
     INIT_BENCH_RAYON.call_once(|| {
@@ -23,50 +38,63 @@ fn setup_benchmark_environment() {
     });
 }
 
-pub fn bench_insert(c: &mut Criterion) {
+fn bench_insert(results: &mut Vec<BenchmarkResult>) {
     setup_benchmark_environment();
     let companies = load_companies();
-
-    let mut group = c.benchmark_group("db_insert");
-    group.measurement_time(std::time::Duration::from_secs(50));
 
     for ngram_size in [2, 3, 4].iter() {
-        group.bench_with_input(
-            BenchmarkId::new("ngram_size", ngram_size),
-            ngram_size,
-            |b, &size| {
-                b.iter_with_setup(
-                    || {
-                        let fe = Arc::new(CharacterNgrams::new(size, " "));
-                        (HashDb::new(fe), companies.clone())
-                    },
-                    |(mut db, companies_batch)| {
-                        for company in companies_batch {
-                            db.insert(company);
-                        }
-                    },
-                );
+        let mut measurements = Vec::new();
+        let start_time = Instant::now();
+        let mut iteration = 0;
+
+        while start_time.elapsed() < Duration::from_secs(20) && iteration < 100 {
+            let setup_start = Instant::now();
+            let fe = Arc::new(CharacterNgrams::new(*ngram_size, " "));
+            let mut db = HashDb::new(fe);
+            let setup_duration = setup_start.elapsed();
+
+            let start = Instant::now();
+            for company in &companies {
+                db.insert(company.clone());
+            }
+            let duration = start.elapsed() - setup_duration;
+            measurements.push(duration.as_secs_f64() * 1000.0);
+            iteration += 1;
+        }
+
+        let mean = measurements.iter().sum::<f64>() / measurements.len() as f64;
+        let stddev = if measurements.len() > 1 {
+            let variance = measurements
+                .iter()
+                .map(|value| {
+                    let diff = mean - value;
+                    diff * diff
+                })
+                .sum::<f64>()
+                / (measurements.len() - 1) as f64;
+            variance.sqrt()
+        } else {
+            0.0
+        };
+
+        results.push(BenchmarkResult {
+            language: "rust".to_string(),
+            backend: "simstring-rs".to_string(),
+            benchmark: "insert".to_string(),
+            parameters: serde_json::json!({ "ngram_size": ngram_size }),
+            stats: Stats {
+                mean,
+                stddev,
+                iterations: measurements.len(),
             },
-        );
+        });
     }
-    group.finish();
 }
 
-pub fn bench_search(c: &mut Criterion) {
+fn bench_search(results: &mut Vec<BenchmarkResult>) {
     setup_benchmark_environment();
     let companies = load_companies();
-    let search_terms: Vec<String> = companies
-        .iter()
-        .take(100.min(companies.len()))
-        .cloned()
-        .collect();
-    if search_terms.is_empty() {
-        println!("Warning: No search terms available for benchmark. Company list might be too small or empty.");
-        return;
-    }
-
-    let mut group = c.benchmark_group("db_search");
-    group.measurement_time(std::time::Duration::from_secs(20));
+    let search_terms: Vec<String> = companies.iter().take(100).cloned().collect();
 
     for ngram_size in [2, 3, 4].iter() {
         let fe = Arc::new(CharacterNgrams::new(*ngram_size, " "));
@@ -79,22 +107,48 @@ pub fn bench_search(c: &mut Criterion) {
         let searcher = Searcher::new(&db, measure);
 
         for threshold in [0.6, 0.7, 0.8, 0.9].iter() {
-            let bench_id_str = format!("ngram_{ngram_size}_threshold_{threshold}");
-            group.bench_with_input(
-                BenchmarkId::new("params", bench_id_str),
-                threshold,
-                |b, &thresh| {
-                    b.iter(|| {
-                        for term in &search_terms {
-                            let dummy = searcher.ranked_search(term, thresh).unwrap();
-                            std::hint::black_box(dummy);
-                        }
+            let mut measurements = Vec::new();
+            let start_time = Instant::now();
+            let mut iteration = 0;
+
+            while start_time.elapsed() < Duration::from_secs(20) && iteration < 100 {
+                let start = Instant::now();
+                for term in &search_terms {
+                    let _ = searcher.ranked_search(term, *threshold).unwrap();
+                }
+                let duration = start.elapsed();
+                measurements.push(duration.as_secs_f64() * 1000.0);
+                iteration += 1;
+            }
+
+            let mean = measurements.iter().sum::<f64>() / measurements.len() as f64;
+            let stddev = if measurements.len() > 1 {
+                let variance = measurements
+                    .iter()
+                    .map(|value| {
+                        let diff = mean - value;
+                        diff * diff
                     })
+                    .sum::<f64>()
+                    / (measurements.len() - 1) as f64;
+                variance.sqrt()
+            } else {
+                0.0
+            };
+
+            results.push(BenchmarkResult {
+                language: "rust".to_string(),
+                backend: "simstring-rs".to_string(),
+                benchmark: "search".to_string(),
+                parameters: serde_json::json!({ "ngram_size": ngram_size, "threshold": threshold }),
+                stats: Stats {
+                    mean,
+                    stddev,
+                    iterations: measurements.len(),
                 },
-            );
+            });
         }
     }
-    group.finish();
 }
 
 fn load_companies() -> Vec<String> {
@@ -110,5 +164,9 @@ fn load_companies() -> Vec<String> {
     reader.lines().map_while(Result::ok).collect()
 }
 
-criterion_group!(benches, bench_insert, bench_search);
-criterion_main!(benches);
+fn main() {
+    let mut results = Vec::new();
+    bench_insert(&mut results);
+    bench_search(&mut results);
+    println!("{}", serde_json::to_string_pretty(&results).unwrap());
+}

@@ -16,6 +16,8 @@ jobs:
   benchmark:
     name: Run Benchmarks
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
 
@@ -33,70 +35,43 @@ jobs:
           toolchain: stable
           components: rustfmt, clippy
 
-      - name: Rust Benchmarks
-        run: |
-          echo "Running Rust benchmarks..."
-          cargo bench
-
-      - name: Run SimString C++ benchmarks
-        run: |
-          echo "Running C++ benchmarks..."
-          bash benches/bench_cpp.sh
-
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.13"
 
-      - name: Run Python Benchmarks
-        run: |
-          pip install uv
-          uv venv
-          if [ "$RUNNER_OS" == "Windows" ]; then
-            source .venv/Scripts/activate
-          else
-            source .venv/bin/activate
-          fi
-          uv pip install simstring-fast
-          echo "Running Python Benchmarks..."
-          uv run benches/bench.py
-
-      - name: Run Python Rust Bindings Benchmarks
-        run: |
-          pip install uv
-          uv venv
-          if [ "$RUNNER_OS" == "Windows" ]; then
-            source .venv/Scripts/activate
-          else
-            source .venv/bin/activate
-          fi
-          uv pip install maturin
-          maturin build --release
-          uv pip install -e .
-          echo "Running Python Benchmarks..."
-          python benches/bench_rust.py
-
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: "3.3"
-          bundler-cache: true
-      - name: Run Ruby Benchmarks
-        run: |
-          gem install simstring_pure
-          gem install descriptive_statistics
-          echo "Running Ruby benchmarks..."
-          ruby benches/bench.rb
 
       - name: Set up Julia
         uses: julia-actions/setup-julia@v2
         with:
           version: "1.11"
-      - name: Run Julia Benchmarks
+
+      - name: Run and Compare Benchmarks
         run: |
-          julia -e 'using Pkg; Pkg.add(["SimString", "BenchmarkTools", "Statistics"])'
-          echo "Running Julia benchmarks..."
-          julia benches/bench.jl
+          # Install python dependencies
+          pip install uv
+          uv venv
+          source .venv/bin/activate
+          uv pip install simstring-fast pandas maturin tabulate
+          maturin build --release
+          uv pip install target/wheels/*.whl
+          # Install ruby dependencies
+          gem install simstring_pure descriptive_statistics json
+          # Install julia dependencies
+          julia -e 'using Pkg; Pkg.add(["SimString", "BenchmarkTools", "Statistics", "JSON"])'
+          # Run benchmarks
+          echo "Running and Comparing Benchmarks..."
+          python benches/run_benches.py
+
+      - name: Commit benchmark results
+        uses: stefanzweifel/git-auto-commit-action@v4
+        with:
+          commit_message: "docs(benchmarks): update benchmark results"
+          file_pattern: BENCHMARKS.md
 
   test:
     name: Test on ${{ matrix.os }} / ${{ matrix.rust }}
@@ -184,7 +159,8 @@ jobs:
             source .venv/bin/activate
           fi
           uv pip install maturin pytest
-          maturin develop
+          maturin build --release
+          uv pip install target/wheels/*.whl
           pytest tests/python/ -vv
 
       - name: Build
@@ -227,7 +203,8 @@ jobs:
             source .venv/bin/activate
           fi
           uv pip install maturin
-          maturin develop
+          maturin build --release
+          uv pip install target/wheels/*.whl
           python examples/python_basic.py
 
   # Publish to crates.io on new tags

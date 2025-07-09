@@ -1,6 +1,7 @@
 require 'benchmark'
 require 'simstring_pure'
 require 'descriptive_statistics'
+require 'json'
 
 def create_db(ngram_size)
   SimString::Database.new(SimString::NGramBuilder.new(ngram_size))
@@ -11,11 +12,8 @@ def load_companies
   File.readlines(filepath, chomp: true)
 end
 
-def bench_insert
+def bench_insert(results)
   companies = load_companies()
-
-  puts "\nBenchmarking database insertions:"
-  puts "-" * 40
 
   [2, 3, 4].each do |ngram_size|
     measurements = []
@@ -33,19 +31,23 @@ def bench_insert
       iterations += 1
     end
 
-    puts "ngram_#{ngram_size}:"
-    puts "  Mean: #{(measurements.mean * 1000).round(2)}ms"
-    puts "  Std Dev: #{(measurements.standard_deviation * 1000).round(2)}ms"
-    puts "  Iterations: #{measurements.length}"
+    results << {
+      language: "ruby",
+      backend: "simstring-pure",
+      benchmark: "insert",
+      parameters: { ngram_size: ngram_size },
+      stats: {
+        mean: (measurements.mean * 1000),
+        stddev: (measurements.standard_deviation * 1000),
+        iterations: measurements.length
+      }
+    }
   end
 end
 
-def bench_search
+def bench_search(results)
   companies = load_companies()
   search_terms = companies[0...100]
-
-  puts "\nBenchmarking database searches:"
-  puts "-" * 40
 
   [2, 3, 4].each do |ngram_size|
     db = create_db(ngram_size)
@@ -67,17 +69,26 @@ def bench_search
         iterations += 1
       end
 
-      puts "ngram_#{ngram_size} (threshold=#{threshold}):"
-      puts "  Mean: #{(measurements.mean * 1000).round(2)}ms"
-      puts "  Std Dev: #{(measurements.standard_deviation * 1000).round(2)}ms"
-      puts "  Iterations: #{measurements.length}"
+      results << {
+        language: "ruby",
+        backend: "simstring-pure",
+        benchmark: "search",
+        parameters: { ngram_size: ngram_size, threshold: threshold },
+        stats: {
+          mean: (measurements.mean * 1000),
+          stddev: (measurements.standard_deviation * 1000),
+          iterations: measurements.length
+        }
+      }
     end
   end
 end
 
 def main
-  bench_insert
-  bench_search
+  results = []
+  bench_insert(results)
+  bench_search(results)
+  puts JSON.pretty_generate(results)
 end
 
 main

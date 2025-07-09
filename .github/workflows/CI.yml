@@ -180,37 +180,30 @@ jobs:
         run: cargo doc --no-deps --document-private-items
 
   build_wheels:
-    name: Build wheels on ${{ matrix.os }} / ${{ matrix.python-architecture }}
+    name: Build wheels on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        python-architecture: ["x64"]
     steps:
       - uses: actions/checkout@v4
-
-      - name: Install gettext on macOS
-        if: runner.os == 'macOS'
-        run: |
-          brew install gettext
-          brew link gettext --force
-
       - uses: actions/setup-python@v5
         with:
           python-version: "3.10"
-          architecture: ${{ matrix.python-architecture }}
 
       - name: Build wheels
         uses: PyO3/maturin-action@v1
         with:
           command: build
           args: --release --out dist
+          # Build universal2 wheels on macOS
+          target: ${{ runner.os == 'macOS' && 'universal2-apple-darwin' || '' }}
 
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
-          name: wheels-${{ matrix.os }}-${{ matrix.python-architecture }}
+          name: wheels-${{ matrix.os }}
           path: dist
 
   test_wheels:
@@ -220,17 +213,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [ubuntu-latest, windows-latest, macos-13, macos-14]
         python-version: ["3.10", "3.11", "3.12", "3.13"]
+        exclude:
+          # Exclude Python 3.10 on macos-14 due to known issues with setup-python
+          - os: macos-14
+            python-version: "3.10"
     steps:
       - uses: actions/checkout@v4
-
-      - name: Install gettext on macOS
-        if: runner.os == 'macOS'
-        run: |
-          brew install gettext
-          brew link gettext --force
-
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}

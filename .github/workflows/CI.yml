@@ -192,7 +192,9 @@ jobs:
 
       - name: Install gettext on macOS
         if: runner.os == 'macOS'
-        run: brew install gettext
+        run: |
+          brew install gettext
+          brew link gettext --force
 
       - uses: actions/setup-python@v5
         with:
@@ -225,7 +227,9 @@ jobs:
 
       - name: Install gettext on macOS
         if: runner.os == 'macOS'
-        run: brew install gettext
+        run: |
+          brew install gettext
+          brew link gettext --force
 
       - uses: actions/setup-python@v5
         with:

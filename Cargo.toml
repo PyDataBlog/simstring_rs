@@ -30,6 +30,7 @@ serde_json = "1.0"
 pyo3-build-config = "0.25"
 
 [dev-dependencies]
+git-cliff = "2.9"
 num_cpus = "1.17"
 
 [[bench]]
@@ -40,6 +41,7 @@ harness = false
 debug = true
 
 [package.metadata.release]
+pre-release-hook = ["cargo", "run", "--package", "git-cliff", "--", "--tag", "{{version}}"]
 push = false
 publish = false
 pre-release-commit-message = "chore(release): {{version}}"

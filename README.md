@@ -29,7 +29,7 @@ Add `simstring_rust` to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-simstring_rust = "0.2.0" # change version accordingly
+simstring_rust = "0.3.0" # change version accordingly
 ```
 
 For the latest features, you can add the master branch by specifying the Git repository:
@@ -81,28 +81,39 @@ fn main() {
 }
 ```
 
-## Releasing
-
-This project uses `cargo-release` to automate the release process. To create a new release, follow these steps:
-
-1.  Ensure your local `main` branch is up-to-date:
-    ```bash
-    git checkout main
-    git pull origin main
-    ```
-2.  Run `cargo release` with the desired release level (`patch`, `minor`, or `major`):
-    ```bash
-    cargo release <LEVEL> --execute
-    ```
-    For example, to create a patch release:
-    ```bash
-    cargo release patch --execute
-    ```
-3.  Push the new commit and tag to GitHub:
-    ```bash
-    git push --follow-tags
-    ```
-The CI/CD pipeline will then automatically publish the new version to crates.io.
+<!-- ## Releasing -->
+<!----> INFO: Release notes for maintainer(s)
+<!-- This project uses [`cargo-release`](https://github.com/crate-ci/cargo-release) and [`git-cliff`](https://github.com/orhun/git-cliff) to automate the release process. -->
+<!---->
+<!-- _NB_: Ensure local `main` branch is up-to-date: -->
+<!---->
+<!-- ```bash -->
+<!-- git checkout main -->
+<!-- git pull origin main -->
+<!-- ``` -->
+<!---->
+<!-- To create a new release, simply run the following command: -->
+<!---->
+<!-- ```bash -->
+<!-- cargo release <LEVEL> # dry-run is default -->
+<!-- cargo release <LEVEL> --execute -->
+<!-- ``` -->
+<!---->
+<!-- Replace `<LEVEL>` with the desired release level (`patch`, `minor`, or `major`). For example, to create a patch release: -->
+<!---->
+<!-- ```bash -->
+<!-- cargo release patch -->
+<!-- ``` -->
+<!---->
+<!-- This command will automatically: -->
+<!---->
+<!-- 1.  Generate and update the `CHANGELOG.md` file. -->
+<!-- 2.  Bump the version in `Cargo.toml`. -->
+<!-- 3.  Commit the changes. -->
+<!-- 4.  Create a new Git tag. -->
+<!-- 5.  Push the commit and tag to GitHub. -->
+<!---->
+<!-- The CI/CD pipeline will then automatically publish the new version to `crates.io`. -->
 
 ## Contributing
 
@@ -113,4 +124,4 @@ This project is licensed under the MIT License.
 
 ## Acknowledgements
 
-Inspired by the [SimString.jl](https://github.com/PyDataBlog/SimString.jl) project.
+Inspired by the [SimString](https://www.chokkan.org/software/simstring/) project.

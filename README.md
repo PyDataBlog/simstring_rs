@@ -81,6 +81,29 @@ fn main() {
 }
 ```
 
+## Releasing
+
+This project uses `cargo-release` to automate the release process. To create a new release, follow these steps:
+
+1.  Ensure your local `main` branch is up-to-date:
+    ```bash
+    git checkout main
+    git pull origin main
+    ```
+2.  Run `cargo release` with the desired release level (`patch`, `minor`, or `major`):
+    ```bash
+    cargo release <LEVEL> --execute
+    ```
+    For example, to create a patch release:
+    ```bash
+    cargo release patch --execute
+    ```
+3.  Push the new commit and tag to GitHub:
+    ```bash
+    git push --follow-tags
+    ```
+The CI/CD pipeline will then automatically publish the new version to crates.io.
+
 ## Contributing
 
 Contributions are welcome! Please open an issue or submit a pull request on GitHub.

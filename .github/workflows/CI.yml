@@ -20,6 +20,9 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          # On pull requests, check out the head ref so we can commit to it
+          ref: ${{ github.head_ref }}
 
       - name: Install system dependencies
         run: |

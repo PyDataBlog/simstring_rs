@@ -60,6 +60,7 @@ jobs:
           uv venv
           source .venv/bin/activate
           uv pip install simstring-fast pandas maturin tabulate
+          rm -rf target/wheels
           maturin build --release
           uv pip install target/wheels/*.whl
           # Install ruby dependencies
@@ -162,6 +163,7 @@ jobs:
             source .venv/bin/activate
           fi
           uv pip install maturin pytest
+          rm -rf target/wheels
           maturin build --release
           uv pip install target/wheels/*.whl
           pytest tests/python/ -vv
@@ -206,6 +208,7 @@ jobs:
             source .venv/bin/activate
           fi
           uv pip install maturin
+          rm -rf target/wheels
           maturin build --release
           uv pip install target/wheels/*.whl
           python examples/python_basic.py

@@ -2,6 +2,22 @@
 All notable changes to this project will be documented in this file.
 
 
+## [0.3.1-beta.1] - 2025-07-16
+
+
+### Bug Fixes
+
+- (**ci**) Remove old wheels from current jobs (#28) ([0507233])
+
+
+### Documentation
+
+- (**benchmarks**) Update benchmark results ([f34d96f])
+
+- (**benchmarks**) Update benchmark results ([0766907])
+
+
+
 ## [0.3.1-alpha.1] - 2025-07-14
 
 

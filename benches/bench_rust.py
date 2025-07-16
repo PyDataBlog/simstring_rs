@@ -56,7 +56,7 @@ def bench_insert(results: list):
         results.append(
             {
                 "language": "python",
-                "backend": "simstring-rs",
+                "backend": "simstring-rust (python bindings)",
                 "benchmark": "insert",
                 "parameters": {"ngram_size": ngram_size},
                 "stats": {
@@ -105,7 +105,7 @@ def bench_search(results: list):
             results.append(
                 {
                     "language": "python",
-                    "backend": "simstring-rust-bindings",
+                    "backend": "simstring-rust (python bindings)",
                     "benchmark": "search",
                     "parameters": {"ngram_size": ngram_size, "threshold": threshold},
                     "stats": {

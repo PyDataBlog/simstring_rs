@@ -79,7 +79,7 @@ fn bench_insert(results: &mut Vec<BenchmarkResult>) {
 
         results.push(BenchmarkResult {
             language: "rust".to_string(),
-            backend: "simstring-rs".to_string(),
+            backend: "simstring-rust (native)".to_string(),
             benchmark: "insert".to_string(),
             parameters: serde_json::json!({ "ngram_size": ngram_size }),
             stats: Stats {
@@ -138,7 +138,7 @@ fn bench_search(results: &mut Vec<BenchmarkResult>) {
 
             results.push(BenchmarkResult {
                 language: "rust".to_string(),
-                backend: "simstring-rs".to_string(),
+                backend: "simstring-rust (native)".to_string(),
                 benchmark: "search".to_string(),
                 parameters: serde_json::json!({ "ngram_size": ngram_size, "threshold": threshold }),
                 stats: Stats {

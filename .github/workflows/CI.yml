@@ -296,7 +296,7 @@ jobs:
           MATURIN_REPOSITORY_URL: https://test.pypi.org/legacy/
         with:
           command: upload
-          args: --non-interactive --skip-existing
+          args: --non-interactive --skip-existing dist/*.whl
           working-directory: .
           before-script-linux: |
             sudo apt-get update
@@ -326,7 +326,7 @@ jobs:
           MATURIN_REPOSITORY_URL: https://upload.pypi.org/legacy/
         with:
           command: upload
-          args: --non-interactive --skip-existing
+          args: --non-interactive --skip-existing dist/*.whl
           working-directory: .
           before-script-linux: |
             sudo apt-get update

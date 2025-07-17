@@ -292,10 +292,16 @@ jobs:
           merge-multiple: true
       - name: Publish to TestPyPI
         uses: PyO3/maturin-action@v1
+        env:
+          MATURIN_REPOSITORY_URL: https://test.pypi.org/legacy/
         with:
           command: upload
-          args: --non-interactive --skip-existing --repository-url https://test.pypi.org/legacy/
+          args: --non-interactive --skip-existing
           working-directory: .
+          before-script-linux: |
+            sudo apt-get update
+            sudo apt-get install -y tree
+            tree .
 
   publish_to_pypi:
     name: Publish to PyPI
@@ -316,10 +322,16 @@ jobs:
           merge-multiple: true
       - name: Publish to PyPI
         uses: PyO3/maturin-action@v1
+        env:
+          MATURIN_REPOSITORY_URL: https://upload.pypi.org/legacy/
         with:
           command: upload
-          args: --non-interactive --skip-existing --repository-url https://upload.pypi.org/legacy/
+          args: --non-interactive --skip-existing
           working-directory: .
+          before-script-linux: |
+            sudo apt-get update
+            sudo apt-get install -y tree
+            tree .
 
   run-examples:
     name: Run Examples

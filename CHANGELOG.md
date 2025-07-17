@@ -2,12 +2,18 @@
 All notable changes to this project will be documented in this file.
 
 
-## [0.3.1-beta.1] - 2025-07-16
+## [0.3.1-beta.2] - 2025-07-17
 
 
 ### Bug Fixes
 
 - (**ci**) Remove old wheels from current jobs (#28) ([0507233])
+
+- (**ci**) Maturin can't publish generated bindings as it can't find the correct path (#29) ([2579a2b])
+
+- (**ci**) Moved repo urls for maturin to env vars (#30) ([d81deef])
+
+- (**ci**) Added missing dist file path for python wheels (#31) ([74f259a])
 
 
 ### Documentation
@@ -15,6 +21,13 @@ All notable changes to this project will be documented in this file.
 - (**benchmarks**) Update benchmark results ([f34d96f])
 
 - (**benchmarks**) Update benchmark results ([0766907])
+
+- (**benchmarks**) Update benchmark results ([1129c90])
+
+
+### Features
+
+- (**ci**) Added pypi and test pypi publishing jobs (#24) ([b59cbc6])
 
 
 

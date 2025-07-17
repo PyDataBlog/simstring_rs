@@ -1,6 +1,6 @@
 [package]
 name = "simstring_rust"
-version = "0.3.1-beta.1"
+version = "0.3.1-beta.2"
 description = "A native Rust implementation of the SimString algorithm"
 license = "MIT"
 repository = "https://github.com/PyDataBlog/simstring_rs"

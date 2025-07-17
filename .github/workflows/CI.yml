@@ -24,6 +24,7 @@ jobs:
         with:
           # On pull requests, check out the head ref so we can commit to it
           ref: ${{ github.head_ref }}
+          fetch-depth: 0
 
       - name: Install system dependencies
         run: |
@@ -72,6 +73,12 @@ jobs:
           echo "Running and Comparing Benchmarks..."
           python benches/run_benches.py
 
+      - name: Prepare for benchmark results commit
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          git stash
+          git checkout main
+          git stash pop
       - name: Commit benchmark results
         if: startsWith(github.ref, 'refs/tags/')
         uses: stefanzweifel/git-auto-commit-action@v4

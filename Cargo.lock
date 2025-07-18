@@ -314,7 +314,7 @@ dependencies = [
 
 [[package]]
 name = "simstring_rust"
-version = "0.3.1-beta.2"
+version = "0.3.1-beta.3"
 dependencies = [
  "ahash",
  "lasso",

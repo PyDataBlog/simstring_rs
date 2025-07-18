@@ -2,6 +2,15 @@
 All notable changes to this project will be documented in this file.
 
 
+## [0.3.1-beta.3] - 2025-07-18
+
+
+### Bug Fixes
+
+- (**ci**) Attempt to fix broken auto commit of benchmark results on a tagged release (#32) ([71d5a5e])
+
+
+
 ## [0.3.1-beta.2] - 2025-07-17
 
 

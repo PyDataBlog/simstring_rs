@@ -63,4 +63,3 @@ def run_benchmarks():
 if __name__ == "__main__":
     run_benchmarks()
     compare_benchmarks()
-

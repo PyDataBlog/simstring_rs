@@ -3,6 +3,26 @@ import sys
 from pathlib import Path
 
 import pandas as pd
+from pydantic_ai import Agent
+from tenacity import retry, stop_after_attempt, wait_exponential
+
+agent = Agent(
+    "google-gla:gemini-2.5-pro",
+    system_prompt=(
+        "Directly generate a markdown summary of the provided benchmark results. "
+        "Do not include any conversational filler or introductory sentences. "
+        "Your response should begin immediately with the summary content, "
+        "structured with markdown sub-headings (e.g., '#### Summary', '##### Insert Performance', '#### Search Performance'). "
+        "The summary should analyze insert and search performance, "
+        "compare the different implementations, and include speedup metrics."
+    ),
+)
+
+
+@retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(3))
+def generate_summary(agent: Agent, benchmark_markdown_output: str) -> str:
+    results = agent.run_sync(benchmark_markdown_output)
+    return results.output
 
 
 def compare_benchmarks():
@@ -62,6 +82,10 @@ def compare_benchmarks():
                 markdown_output = group.to_markdown(index=False)
                 if markdown_output:
                     f.write(markdown_output)
+                    # Generate a comparision summary section via LLM which includes the speedup gains and/os losses
+                    f.write("\n\n#### AI Summary\n")
+                    summary = generate_summary(agent, markdown_output)
+                    f.write(summary)
                 f.write("\n\n")
 
         print("--- Finished benchmark comparison successfully ---")

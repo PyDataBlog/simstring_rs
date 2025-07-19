@@ -63,7 +63,7 @@ jobs:
           pip install uv
           uv venv
           source .venv/bin/activate
-          uv pip install simstring-fast pandas maturin tabulate pydantic-ai tenacity
+          uv pip install simstring-fast pandas maturin tabulate pydantic-ai tenacity psutil
           rm -rf target/wheels
           maturin build --release
           uv pip install target/wheels/*.whl

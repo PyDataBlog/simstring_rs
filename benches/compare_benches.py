@@ -12,7 +12,7 @@ agent = Agent(
         "Directly generate a markdown summary of the provided benchmark results. "
         "Do not include any conversational filler or introductory sentences. "
         "Your response should begin immediately with the summary content, "
-        "structured with markdown sub-headings (e.g., '#### Summary', '##### Insert Performance', '#### Search Performance'). "
+        "structured with markdown sub-headings (e.g., '#### Summary'). "
         "The summary should analyze insert and search performance, "
         "compare the different implementations, and include speedup metrics."
     ),

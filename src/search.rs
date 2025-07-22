@@ -1,9 +1,9 @@
 use crate::database::StringId;
 use crate::measures::Measure;
 use crate::Database;
-use ahash::{AHashMap, AHashSet};
 use lasso::Spur;
 use rayon::prelude::*;
+use rustc_hash::{FxHashMap, FxHashSet};
 use thiserror::Error;
 
 #[derive(Error, Debug, PartialEq)]
@@ -24,26 +24,30 @@ impl<'db, M: Measure> Searcher<'db, M> {
         Self { db, measure }
     }
 
-    pub fn search(&self, query_string: &str, alpha: f64) -> Result<Vec<String>, SearchError> {
+    pub fn search<'a>(
+        &'a self,
+        query_string: &str,
+        alpha: f64,
+    ) -> Result<Vec<&'a str>, SearchError> {
         let (candidate_ids, _) = self.search_candidates(query_string, alpha)?;
 
-        let mut results: Vec<String> = candidate_ids
+        let mut results: Vec<&'a str> = candidate_ids
             .par_iter()
-            .filter_map(|&id| self.db.get_string(id).map(|s| s.to_string()))
+            .filter_map(|&id| self.db.get_string(id))
             .collect();
 
         results.sort_unstable();
         Ok(results)
     }
 
-    pub fn ranked_search(
-        &self,
+    pub fn ranked_search<'a>(
+        &'a self,
         query_string: &str,
         alpha: f64,
-    ) -> Result<Vec<(String, f64)>, SearchError> {
+    ) -> Result<Vec<(&'a str, f64)>, SearchError> {
         let (candidate_ids, query_features) = self.search_candidates(query_string, alpha)?;
 
-        let mut results_with_scores: Vec<(String, f64)> = candidate_ids
+        let mut results_with_scores: Vec<(&'a str, f64)> = candidate_ids
             .par_iter()
             .filter_map(|&id| {
                 if let (Some(candidate_str), Some(candidate_features)) =
@@ -51,7 +55,7 @@ impl<'db, M: Measure> Searcher<'db, M> {
                 {
                     let score = self.measure.similarity(&query_features, candidate_features);
                     if score >= alpha {
-                        Some((candidate_str.to_string(), score))
+                        Some((candidate_str, score))
                     } else {
                         None
                     }
@@ -64,7 +68,7 @@ impl<'db, M: Measure> Searcher<'db, M> {
         results_with_scores.sort_unstable_by(|a, b| {
             b.1.partial_cmp(&a.1)
                 .unwrap_or(std::cmp::Ordering::Equal)
-                .then_with(|| a.0.cmp(&b.0))
+                .then_with(|| a.0.cmp(b.0))
         });
 
         Ok(results_with_scores)
@@ -74,7 +78,7 @@ impl<'db, M: Measure> Searcher<'db, M> {
         &self,
         query_string: &str,
         alpha: f64,
-    ) -> Result<(AHashSet<StringId>, Vec<Spur>), SearchError> {
+    ) -> Result<(FxHashSet<StringId>, Vec<Spur>), SearchError> {
         if !(alpha > 0.0 && alpha <= 1.0) {
             return Err(SearchError::InvalidThreshold(alpha));
         }
@@ -84,18 +88,22 @@ impl<'db, M: Measure> Searcher<'db, M> {
         // Now, lock the long-lived Arc. The guard's lifetime is valid.
         let mut interner = interner_arc.lock().unwrap();
 
-        let query_features = self
+        let mut query_features = self
             .db
             .feature_extractor()
             .features(query_string, &mut interner);
+        // FIX: If features are sorted by insertions. this sort and dedup maybe redundant?
+        query_features.sort_unstable();
+        query_features.dedup();
+
         let candidate_ids = self.search_for_ids(&query_features, alpha);
         Ok((candidate_ids, query_features))
     }
 
-    fn search_for_ids(&self, query_features: &[Spur], alpha: f64) -> AHashSet<StringId> {
+    fn search_for_ids(&self, query_features: &[Spur], alpha: f64) -> FxHashSet<StringId> {
         let query_size = query_features.len();
         if query_size == 0 {
-            return AHashSet::default();
+            return FxHashSet::default();
         }
 
         let min_feat_size = self.measure.min_feature_size(query_size, alpha);
@@ -109,6 +117,7 @@ impl<'db, M: Measure> Searcher<'db, M> {
                         .minimum_common_feature_count(query_size, candidate_size, alpha);
                 self.overlap_join(query_features, tau, candidate_size)
             })
+            // FIX: Investigate if this multistaged conversion is even necessary
             .collect::<Vec<_>>()
             .into_iter()
             .collect()
@@ -120,19 +129,21 @@ impl<'db, M: Measure> Searcher<'db, M> {
         tau: usize,
         candidate_size: usize,
     ) -> Vec<StringId> {
-        let mut sorted_features = query_features.to_vec();
-
-        sorted_features.sort_unstable_by_key(|&f| {
+        // FIX: Hmmm, maybe feature_indices and results can be pre-allocated?
+        let mut feature_indices: Vec<usize> = (0..query_features.len()).collect();
+        // TODO: Can this sorting logic be improved?
+        feature_indices.sort_unstable_by_key(|&i| {
             self.db
-                .lookup_strings(candidate_size, f)
+                .lookup_strings(candidate_size, query_features[i])
                 .map_or(usize::MAX, |s| s.len())
         });
 
-        let mut candidate_counts: AHashMap<StringId, usize> = AHashMap::default();
+        let mut candidate_counts: FxHashMap<StringId, usize> = FxHashMap::default();
         let mut results = Vec::new();
         let q_len = query_features.len();
 
-        for &feature in &sorted_features[..q_len.saturating_sub(tau) + 1] {
+        for &idx in &feature_indices[..q_len.saturating_sub(tau) + 1] {
+            let feature = query_features[idx];
             if let Some(ids) = self.db.lookup_strings(candidate_size, feature) {
                 for &id in ids {
                     *candidate_counts.entry(id).or_insert(0) += 1;
@@ -150,12 +161,13 @@ impl<'db, M: Measure> Searcher<'db, M> {
                 results.push(candidate_id);
                 continue;
             }
-
-            for (i, &feature) in sorted_features
+            // TODO: Should early termination happen if ==> count + (q_len - (q_len.saturating_sub(tau) + 1)) < tau
+            for (i, &idx) in feature_indices
                 .iter()
                 .enumerate()
                 .skip(q_len.saturating_sub(tau) + 1)
             {
+                let feature = query_features[idx];
                 if let Some(ids) = self.db.lookup_strings(candidate_size, feature) {
                     if ids.contains(&candidate_id) {
                         count += 1;

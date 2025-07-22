@@ -8,6 +8,8 @@ use pyo3::create_exception;
 use pyo3::prelude::*;
 use std::sync::Arc;
 
+// TODO: Lazily lumped all errors here but maybe more specific errors can done? like
+// FeatureExtractionError and the likes
 create_exception!(simstring_rust, SearchError, pyo3::exceptions::PyValueError);
 
 // Wrapper for FeatureExtractor trait as I can't find any direct translation.
@@ -235,11 +237,13 @@ impl PySearcher {
     ) -> PyResult<Vec<String>> {
         let db_borrow = self.db.borrow(py);
         let searcher = RustSearcher::new(&db_borrow.db, self.measure);
-        searcher.search(query_string, alpha).map_err(|e| match e {
+        let results = searcher.search(query_string, alpha).map_err(|e| match e {
             RustSearchError::InvalidThreshold(val) => {
                 SearchError::new_err(format!("Invalid threshold: {val}"))
             }
-        })
+        })?;
+        // TODO: Explore if the python bindings can handle returning references
+        Ok(results.into_iter().map(|s| s.to_string()).collect())
     }
 
     fn ranked_search<'py>(
@@ -250,13 +254,17 @@ impl PySearcher {
     ) -> PyResult<Vec<(String, f64)>> {
         let db_borrow = self.db.borrow(py);
         let searcher = RustSearcher::new(&db_borrow.db, self.measure);
-        searcher
+        let results = searcher
             .ranked_search(query_string, alpha)
             .map_err(|e| match e {
                 RustSearchError::InvalidThreshold(val) => {
                     SearchError::new_err(format!("Invalid threshold: {val}"))
                 }
-            })
+            })?;
+        Ok(results
+            .into_iter()
+            .map(|(s, score)| (s.to_string(), score))
+            .collect())
     }
 }
 

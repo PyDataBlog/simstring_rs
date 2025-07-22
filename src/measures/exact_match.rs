@@ -1,6 +1,6 @@
 use super::Measure;
 use crate::database::Database;
-use ahash::AHashSet;
+
 use lasso::Spur;
 
 #[derive(Default, Clone, Copy)]
@@ -28,13 +28,12 @@ impl Measure for ExactMatch {
         if x.len() != y.len() {
             return 0.0;
         }
-        let x_set: AHashSet<_> = x.iter().collect();
-        let y_set: AHashSet<_> = y.iter().collect();
 
-        if x_set == y_set {
+        if x.iter().zip(y.iter()).all(|(a, b)| a == b) {
             1.0
         } else {
             0.0
         }
     }
 }
+

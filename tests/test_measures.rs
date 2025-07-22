@@ -124,14 +124,16 @@ mod exact_match_tests {
         let mut interner = Rodeo::default();
         let measure = ExactMatch;
 
-        let x_spurs: Vec<_> = ["a", "b", "c"]
+        let mut x_spurs: Vec<_> = ["a", "b", "c"]
             .iter()
             .map(|s| interner.get_or_intern(s))
             .collect();
-        let y_spurs: Vec<_> = ["c", "a", "b"]
+        x_spurs.sort_unstable();
+        let mut y_spurs: Vec<_> = ["c", "a", "b"]
             .iter()
             .map(|s| interner.get_or_intern(s))
             .collect(); // Same elements, different order
+        y_spurs.sort_unstable();
         let z_spurs: Vec<_> = ["a", "b", "d"]
             .iter()
             .map(|s| interner.get_or_intern(s))

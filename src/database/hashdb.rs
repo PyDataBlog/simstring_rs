@@ -1,7 +1,7 @@
 use crate::database::{Database, StringId};
 use crate::extractors::FeatureExtractor;
-use ahash::{AHashMap, AHashSet};
 use lasso::{Rodeo, Spur};
+use rustc_hash::{FxHashMap, FxHashSet};
 use std::fmt;
 use std::sync::{Arc, Mutex};
 
@@ -9,7 +9,7 @@ pub struct HashDb {
     feature_extractor: Arc<dyn FeatureExtractor>,
     pub strings: Vec<String>,
     string_features: Vec<Vec<Spur>>,
-    feature_map: AHashMap<usize, AHashMap<Spur, AHashSet<StringId>>>,
+    feature_map: FxHashMap<usize, FxHashMap<Spur, FxHashSet<StringId>>>,
     interner: Arc<Mutex<Rodeo>>,
 }
 
@@ -37,7 +37,7 @@ impl HashDb {
             feature_extractor,
             strings: Vec::new(),
             string_features: Vec::new(),
-            feature_map: AHashMap::default(),
+            feature_map: FxHashMap::default(),
             interner: Arc::new(Mutex::new(Rodeo::default())),
         }
     }
@@ -54,7 +54,11 @@ impl HashDb {
 impl Database for HashDb {
     fn insert(&mut self, text: String) {
         let mut interner = self.interner.lock().unwrap();
-        let features = self.feature_extractor.features(&text, &mut interner);
+        let mut features = self.feature_extractor.features(&text, &mut interner);
+        // FIX: Hmm append_feature_counts does counts. Should this sorting be moved there and make
+        // dedup redundant?
+        features.sort_unstable();
+        features.dedup();
         let size = features.len();
         let string_id = self.strings.len();
 
@@ -75,7 +79,7 @@ impl Database for HashDb {
         self.interner.lock().unwrap().clear();
     }
 
-    fn lookup_strings(&self, size: usize, feature: Spur) -> Option<&AHashSet<StringId>> {
+    fn lookup_strings(&self, size: usize, feature: Spur) -> Option<&FxHashSet<StringId>> {
         self.feature_map.get(&size)?.get(&feature)
     }
 

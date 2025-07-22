@@ -27,15 +27,23 @@ impl FeatureExtractor for CharacterNgrams {
         if self.n == 0 {
             return vec![];
         }
-        let padding = self.endmarker.repeat(self.n.saturating_sub(1));
-        let padded_text = format!("{padding}{text}{padding}");
 
-        let ngrams: Vec<String> = padded_text
-            .chars()
-            .collect::<Vec<char>>()
-            .windows(self.n)
-            .map(|window| window.iter().collect())
-            .collect();
+        let mut ngrams = Vec::new();
+        let padding = self.endmarker.repeat(self.n.saturating_sub(1));
+
+        // Create an iterator that includes padding
+        let padded_text_iter = padding.chars().chain(text.chars()).chain(padding.chars());
+
+        // Use a buffer to collect characters for each n-gram
+        let mut buffer: Vec<char> = Vec::with_capacity(self.n);
+
+        for ch in padded_text_iter {
+            buffer.push(ch);
+            if buffer.len() == self.n {
+                ngrams.push(buffer.iter().collect::<String>());
+                buffer.remove(0);
+            }
+        }
 
         super::append_feature_counts(interner, ngrams)
     }

@@ -1,8 +1,8 @@
 mod hashdb;
 
 use crate::extractors::FeatureExtractor;
-use rustc_hash::FxHashSet;
 use lasso::{Rodeo, Spur};
+use rustc_hash::FxHashSet;
 use std::sync::{Arc, Mutex};
 
 pub type StringId = usize;
@@ -16,6 +16,7 @@ pub trait Database: Send + Sync {
     fn feature_extractor(&self) -> &dyn FeatureExtractor;
     fn max_feature_len(&self) -> usize;
     fn interner(&self) -> Arc<Mutex<Rodeo>>;
+    fn total_strings(&self) -> usize;
 }
 
 pub use hashdb::HashDb;

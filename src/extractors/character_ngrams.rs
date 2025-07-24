@@ -28,21 +28,34 @@ impl FeatureExtractor for CharacterNgrams {
             return vec![];
         }
 
-        let mut ngrams = Vec::new();
-        let padding = self.endmarker.repeat(self.n.saturating_sub(1));
+        // Pre-calculate capacity to avoid reallocations
+        let text_len = text.chars().count();
+        let padding_len = self.n.saturating_sub(1);
+        let total_len = text_len + 2 * padding_len;
 
-        // Create an iterator that includes padding
-        let padded_text_iter = padding.chars().chain(text.chars()).chain(padding.chars());
+        if total_len < self.n {
+            return vec![];
+        }
 
-        // Use a buffer to collect characters for each n-gram
-        let mut buffer: Vec<char> = Vec::with_capacity(self.n);
+        let expected_ngrams = total_len - self.n + 1;
+        let mut ngrams = Vec::with_capacity(expected_ngrams);
 
-        for ch in padded_text_iter {
-            buffer.push(ch);
-            if buffer.len() == self.n {
-                ngrams.push(buffer.iter().collect::<String>());
-                buffer.remove(0);
+        let padding = self.endmarker.repeat(padding_len);
+
+        // collect chars once, then slice
+        let mut all_chars = Vec::with_capacity(total_len);
+        all_chars.extend(padding.chars());
+        all_chars.extend(text.chars());
+        all_chars.extend(padding.chars());
+
+        // Generate n-grams using efficient windowing
+        for window in all_chars.windows(self.n) {
+            // Pre-allocate string with known capacity
+            let mut ngram = String::with_capacity(self.n * 4); // Assume max 4 bytes per char
+            for &ch in window {
+                ngram.push(ch);
             }
+            ngrams.push(ngram);
         }
 
         super::append_feature_counts(interner, ngrams)

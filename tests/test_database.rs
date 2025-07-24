@@ -141,3 +141,13 @@ fn test_db_clear() {
     assert_eq!(db.max_feature_len(), 0);
     assert_eq!(db.interner().lock().unwrap().len(), 0);
 }
+
+#[test]
+fn test_total_strings() {
+    let feature_extractor = Arc::new(CharacterNgrams::new(2, "$"));
+    let mut db = HashDb::new(feature_extractor);
+    db.insert("test1".to_string());
+    db.insert("test2".to_string());
+
+    assert_eq!(db.total_strings(), 2);
+}

@@ -32,7 +32,7 @@ impl FeatureExtractor for WordNgrams {
 
         let tokens = text.split(&self.splitter).filter(|s| !s.is_empty());
 
-        // Create an iterator that includes padding
+        // an iterator that includes padding
         let padded_tokens_iter = std::iter::once(self.padder.as_str())
             .chain(tokens)
             .chain(std::iter::once(self.padder.as_str()));

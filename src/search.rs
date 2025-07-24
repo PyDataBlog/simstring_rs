@@ -83,18 +83,13 @@ impl<'db, M: Measure> Searcher<'db, M> {
             return Err(SearchError::InvalidThreshold(alpha));
         }
 
-        // Create a binding for the Arc to extend its lifetime.
-        let interner_arc = self.db.interner();
-        // Now, lock the long-lived Arc. The guard's lifetime is valid.
-        let mut interner = interner_arc.lock().unwrap();
-
-        let mut query_features = self
-            .db
-            .feature_extractor()
-            .features(query_string, &mut interner);
-        // FIX: If features are sorted by insertions. this sort and dedup maybe redundant?
-        query_features.sort_unstable();
-        query_features.dedup();
+        // Extract features with minimal lock time
+        let query_features = {
+            let interner_arc = self.db.interner();
+            let mut interner = interner_arc.lock().unwrap();
+            let extractor = self.db.feature_extractor();
+            extractor.features(query_string, &mut interner)
+        };
 
         let candidate_ids = self.search_for_ids(&query_features, alpha);
         Ok((candidate_ids, query_features))
@@ -109,7 +104,7 @@ impl<'db, M: Measure> Searcher<'db, M> {
         let min_feat_size = self.measure.min_feature_size(query_size, alpha);
         let max_feat_size = self.measure.max_feature_size(query_size, alpha, self.db);
 
-        (min_feat_size..=max_feat_size)
+        let mut all_candidates: Vec<StringId> = (min_feat_size..=max_feat_size)
             .into_par_iter()
             .flat_map(|candidate_size| {
                 let tau =
@@ -117,10 +112,12 @@ impl<'db, M: Measure> Searcher<'db, M> {
                         .minimum_common_feature_count(query_size, candidate_size, alpha);
                 self.overlap_join(query_features, tau, candidate_size)
             })
-            // FIX: Investigate if this multistaged conversion is even necessary
-            .collect::<Vec<_>>()
-            .into_iter()
-            .collect()
+            .collect();
+
+        all_candidates.sort_unstable();
+        all_candidates.dedup();
+
+        all_candidates.into_iter().collect()
     }
 
     fn overlap_join(
@@ -129,22 +126,26 @@ impl<'db, M: Measure> Searcher<'db, M> {
         tau: usize,
         candidate_size: usize,
     ) -> Vec<StringId> {
-        // FIX: Hmmm, maybe feature_indices and results can be pre-allocated?
+        if query_features.is_empty() || tau == 0 {
+            return Vec::new();
+        }
+
+        // Pre-compute ALL feature lookups once
+        let feature_sets: Vec<Option<&FxHashSet<StringId>>> = query_features
+            .iter()
+            .map(|&feature| self.db.lookup_strings(candidate_size, feature))
+            .collect();
+
         let mut feature_indices: Vec<usize> = (0..query_features.len()).collect();
-        // TODO: Can this sorting logic be improved?
-        feature_indices.sort_unstable_by_key(|&i| {
-            self.db
-                .lookup_strings(candidate_size, query_features[i])
-                .map_or(usize::MAX, |s| s.len())
-        });
+        feature_indices.sort_unstable_by_key(|&i| feature_sets[i].map_or(usize::MAX, |s| s.len()));
 
         let mut candidate_counts: FxHashMap<StringId, usize> = FxHashMap::default();
         let mut results = Vec::new();
         let q_len = query_features.len();
 
+        // First pass: count features using pre-computed sets
         for &idx in &feature_indices[..q_len.saturating_sub(tau) + 1] {
-            let feature = query_features[idx];
-            if let Some(ids) = self.db.lookup_strings(candidate_size, feature) {
+            if let Some(ids) = feature_sets[idx] {
                 for &id in ids {
                     *candidate_counts.entry(id).or_insert(0) += 1;
                 }
@@ -155,20 +156,21 @@ impl<'db, M: Measure> Searcher<'db, M> {
             return candidate_counts.keys().cloned().collect();
         }
 
+        // Second pass: check remaining features for candidates that need more matches
         for (&candidate_id, &initial_count) in &candidate_counts {
             let mut count = initial_count;
             if count >= tau {
                 results.push(candidate_id);
                 continue;
             }
-            // TODO: Should early termination happen if ==> count + (q_len - (q_len.saturating_sub(tau) + 1)) < tau
+
             for (i, &idx) in feature_indices
                 .iter()
                 .enumerate()
                 .skip(q_len.saturating_sub(tau) + 1)
             {
-                let feature = query_features[idx];
-                if let Some(ids) = self.db.lookup_strings(candidate_size, feature) {
+                // Use pre-computed feature sets
+                if let Some(ids) = feature_sets[idx] {
                     if ids.contains(&candidate_id) {
                         count += 1;
                     }

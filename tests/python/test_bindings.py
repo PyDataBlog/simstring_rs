@@ -28,6 +28,15 @@ class TestSimstringBindings:
         db.clear()
         assert len(db) == 0
 
+    def test_db_strings(self):
+        db = HashDb(self.extractor)
+
+        db.insert("apple")
+        db.insert("apply")
+
+        db_collection = db.strings()
+        assert db_collection == ["apple", "apply"]
+
     def test_ranked_search_correctness(self):
         # With a threshold of 0.8, only "apple" should be returned.
         results = self.searcher.ranked_search("apple", 0.8)

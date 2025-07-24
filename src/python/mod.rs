@@ -193,8 +193,12 @@ impl PyHashDb {
         self.db.clear();
     }
 
+    fn strings(&mut self) -> Vec<String> {
+        self.db.strings.clone()
+    }
+
     fn __len__(&self) -> usize {
-        self.db.strings.len()
+        self.db.total_strings()
     }
 }
 

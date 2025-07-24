@@ -1,6 +1,5 @@
-use super::Measure;
+use super::{compute_intersection_size, Measure};
 use crate::database::Database;
-
 use lasso::Spur;
 
 #[derive(Default, Clone, Copy)]
@@ -28,25 +27,10 @@ impl Measure for Cosine {
             return 0.0;
         }
 
-        let mut intersection_size = 0;
-        let mut i = 0;
-        let mut j = 0;
-
-        while i < x.len() && j < y.len() {
-            if x[i] == y[j] {
-                intersection_size += 1;
-                i += 1;
-                j += 1;
-            } else if x[i] < y[j] {
-                i += 1;
-            } else {
-                j += 1;
-            }
-        }
-
+        let intersection_size = compute_intersection_size(x, y);
         let denominator = (x.len() as f64 * y.len() as f64).sqrt();
 
-        if denominator == 0.0 {
+        if denominator == 0.0 || !denominator.is_finite() {
             0.0
         } else {
             intersection_size as f64 / denominator

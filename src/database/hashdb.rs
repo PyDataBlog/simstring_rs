@@ -54,11 +54,7 @@ impl HashDb {
 impl Database for HashDb {
     fn insert(&mut self, text: String) {
         let mut interner = self.interner.lock().unwrap();
-        let mut features = self.feature_extractor.features(&text, &mut interner);
-        // FIX: Hmm append_feature_counts does counts. Should this sorting be moved there and make
-        // dedup redundant?
-        features.sort_unstable();
-        features.dedup();
+        let features = self.feature_extractor.features(&text, &mut interner);
         let size = features.len();
         let string_id = self.strings.len();
 
@@ -101,5 +97,9 @@ impl Database for HashDb {
 
     fn interner(&self) -> Arc<Mutex<Rodeo>> {
         Arc::clone(&self.interner)
+    }
+
+    fn total_strings(&self) -> usize {
+        self.strings.len()
     }
 }

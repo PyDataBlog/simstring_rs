@@ -1,6 +1,5 @@
 use super::Measure;
 use crate::database::Database;
-
 use lasso::Spur;
 
 #[derive(Default, Clone, Copy)]
@@ -36,4 +35,3 @@ impl Measure for ExactMatch {
         }
     }
 }
-

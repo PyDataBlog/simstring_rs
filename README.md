@@ -2,6 +2,7 @@
 
 [![Build Status](https://github.com/PyDataBlog/simstring_rs/actions/workflows/CI.yml/badge.svg)](https://github.com/PyDataBlog/simstring_rs/actions)
 [![Crates.io](https://img.shields.io/crates/v/simstring_rust.svg)](https://crates.io/crates/simstring_rust)
+[![PyPI version](https://img.shields.io/pypi/v/simstring-rust.svg)](https://pypi.org/project/simstring-rust/)
 [![Documentation](https://docs.rs/simstring_rust/badge.svg)](https://docs.rs/simstring_rust)
 [![Rust](https://img.shields.io/badge/rust-1.63.0%2B-blue.svg?maxAge=3600)](https://github.com/PyDataBlog/simstring_rs)
 

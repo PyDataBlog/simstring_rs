@@ -24,27 +24,63 @@ def get_system_specs():
 
 def generate_manual_summary(df: pl.DataFrame) -> str:
     rust_native_backend = "simstring-rust (native)"
-    rust_native_time_df = df.filter(
-        (pl.col("language") == "rust") & (pl.col("backend") == rust_native_backend)
+
+    # Identify parameter columns dynamically
+    base_cols = {"language", "backend", "benchmark", "mean", "stddev", "iterations"}
+    param_cols = [col for col in df.columns if col not in base_cols]
+
+    rust_native_df = (
+        df.filter(
+            (pl.col("language") == "rust") & (pl.col("backend") == rust_native_backend)
+        )
+        .select(param_cols + ["mean"])
+        .rename({"mean": "rust_mean"})
     )
 
-    if rust_native_time_df.is_empty():
+    if rust_native_df.is_empty():
         return "Could not find native Rust benchmark to compare against."
 
-    rust_native_time = rust_native_time_df.select("mean").item()
-
-    summary_df = df.filter(
+    other_df = df.filter(
         (pl.col("language") != "rust") | (pl.col("backend") != rust_native_backend)
-    ).with_columns(
-        (rust_native_time / pl.col("mean")).alias("speedup"),
     )
 
-    summary = []
-    for row in summary_df.iter_rows(named=True):
-        implementation = f"{row['language']} ({row['backend']})"
-        summary.append(
-            f"- **{implementation}**: `{row['speedup']:.2f}x` speedup vs Rust (native)."
+    if not param_cols:
+        # Handle case with no parameters
+        if other_df.height > 0 and rust_native_df.height > 0:
+            rust_mean = rust_native_df.select("rust_mean").item()
+            summary_df = other_df.with_columns(
+                (rust_mean / pl.col("mean")).alias("speedup")
+            )
+        else:
+            return "Not enough data for comparison."
+    else:
+        summary_df = other_df.join(rust_native_df, on=param_cols, how="left")
+        summary_df = summary_df.with_columns(
+            (pl.col("rust_mean") / pl.col("mean")).alias("speedup")
         )
+
+    summary = []
+    # Sort to ensure consistent output order
+    sort_cols = ["language", "backend"] + param_cols
+    for row in summary_df.sort(sort_cols).iter_rows(named=True):
+        implementation = f"{row['language']} ({row['backend']})"
+
+        params_str = ""
+        if param_cols:
+            params_str = ", ".join(
+                f"{p}={row[p]}" for p in param_cols if row.get(p) is not None
+            )
+            params_str = f" ({params_str})"
+
+        speedup = row.get("speedup")
+        if speedup is not None:
+            summary.append(
+                f"- **{implementation}**{params_str}: `{speedup:.2f}x` speedup vs Rust (native)."
+            )
+        else:
+            summary.append(
+                f"- **{implementation}**{params_str}: No corresponding Rust (native) benchmark found."
+            )
 
     return "\n".join(summary)
 
@@ -70,6 +106,7 @@ def compare_benchmarks():
 
         print("Successfully loaded results.json. Normalizing data with Polars.")
         df = pl.from_dicts(data)
+        # Unnest parameter and stats dictionaries
         df = df.unnest("parameters").unnest("stats")
 
         print("Sorting data.")
@@ -90,10 +127,11 @@ def compare_benchmarks():
             for benchmark_name, group in df.group_by("benchmark"):
                 f.write(f"### {str(benchmark_name).capitalize()} Benchmark\n")
 
-                # Select and drop columns that are all null
-                group_display = group.select(
-                    [col for col in group.columns if group[col].is_not_null().any()]
-                )
+                # Select columns to display, dropping any that are all null
+                display_cols = [
+                    col for col in group.columns if group[col].is_not_null().any()
+                ]
+                group_display = group.select(display_cols)
 
                 # Create markdown table
                 markdown_output = tabulate(
@@ -103,9 +141,7 @@ def compare_benchmarks():
                 if markdown_output:
                     f.write(markdown_output)
                     f.write("\n\n#### Manual Summary\n")
-                    summary = generate_manual_summary(
-                        group.select(["language", "backend", "mean"])
-                    )
+                    summary = generate_manual_summary(group)
                     f.write(summary)
                 f.write("\n\n")
 
@@ -121,3 +157,4 @@ def compare_benchmarks():
 
 if __name__ == "__main__":
     compare_benchmarks()
+

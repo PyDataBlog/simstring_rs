@@ -56,14 +56,12 @@ jobs:
           version: "1.11"
 
       - name: Run and Compare Benchmarks
-        env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
           # Install python dependencies
           pip install uv
           uv venv
           source .venv/bin/activate
-          uv pip install simstring-fast pandas maturin tabulate pydantic-ai tenacity psutil
+          uv pip install simstring-fast polars maturin tabulate tenacity psutil
           rm -rf target/wheels
           maturin build --release
           uv pip install target/wheels/*.whl

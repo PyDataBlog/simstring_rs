@@ -3,32 +3,12 @@ import platform
 import sys
 from pathlib import Path
 
-import pandas as pd
+import polars as pl
 import psutil
-from pydantic_ai import Agent
-from tenacity import retry, stop_after_attempt, wait_exponential
-
-agent = Agent(
-    "google-gla:gemini-2.5-pro",
-    system_prompt=(
-        "Directly generate a markdown summary of the provided benchmark results. "
-        "Do not include any conversational filler or introductory sentences. "
-        "Your response should begin immediately with the summary content, "
-        "The summary should analyze insert and search performance, "
-        "compare the different implementations, and include speedup metrics "
-        "with reference native rust benchmarks"
-    ),
-)
-
-
-@retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(3))
-def generate_summary(agent: Agent, benchmark_markdown_output: str) -> str:
-    results = agent.run_sync(benchmark_markdown_output)
-    return results.output
+from tabulate import tabulate
 
 
 def get_system_specs():
-    """Gets system specifications."""
     specs = {
         "System": platform.system(),
         "Release": platform.release(),
@@ -40,6 +20,33 @@ def get_system_specs():
         "Total Memory": f"{psutil.virtual_memory().total / (1024**3):.2f} GB",
     }
     return specs
+
+
+def generate_manual_summary(df: pl.DataFrame) -> str:
+    rust_native_backend = "simstring-rust (native)"
+    rust_native_time_df = df.filter(
+        (pl.col("language") == "rust") & (pl.col("backend") == rust_native_backend)
+    )
+
+    if rust_native_time_df.is_empty():
+        return "Could not find native Rust benchmark to compare against."
+
+    rust_native_time = rust_native_time_df.select("mean").item()
+
+    summary_df = df.filter(
+        (pl.col("language") != "rust") | (pl.col("backend") != rust_native_backend)
+    ).with_columns(
+        (rust_native_time / pl.col("mean")).alias("speedup"),
+    )
+
+    summary = []
+    for row in summary_df.iter_rows(named=True):
+        implementation = f"{row['language']} ({row['backend']})"
+        summary.append(
+            f"- **{implementation}**: `{row['speedup']:.2f}x` speedup vs Rust (native)."
+        )
+
+    return "\n".join(summary)
 
 
 def compare_benchmarks():
@@ -61,11 +68,12 @@ def compare_benchmarks():
             print("Error: results.json is empty!", file=sys.stderr)
             sys.exit(1)
 
-        print("Successfully loaded results.json. Normalizing data with pandas.")
-        df = pd.json_normalize(data)
+        print("Successfully loaded results.json. Normalizing data with Polars.")
+        df = pl.from_dicts(data)
+        df = df.unnest("parameters").unnest("stats")
 
         print("Sorting data.")
-        df = df.sort_values(["benchmark", "language", "backend"])
+        df = df.sort(["benchmark", "language", "backend"])
 
         print(f"Writing markdown to: {output_path}")
         with open(output_path, "w") as f:
@@ -79,35 +87,25 @@ def compare_benchmarks():
                 f.write(f"- **{key}**: {value}\n")
             f.write("\n")
 
-            for benchmark, group in df.groupby("benchmark"):
-                f.write(f"### {str(benchmark).capitalize()} Benchmark\n")
+            for benchmark_name, group in df.group_by("benchmark"):
+                f.write(f"### {str(benchmark_name).capitalize()} Benchmark\n")
 
-                param_cols = [
-                    col.replace("parameters.", "")
-                    for col in df.columns
-                    if col.startswith("parameters.")
-                ]
-                display_cols = (
-                    ["language", "backend"]
-                    + [f"parameters.{p}" for p in param_cols]
-                    + ["stats.mean", "stats.stddev", "stats.iterations"]
+                # Select and drop columns that are all null
+                group_display = group.select(
+                    [col for col in group.columns if group[col].is_not_null().any()]
                 )
 
-                display_cols = [col for col in display_cols if col in group.columns]
+                # Create markdown table
+                markdown_output = tabulate(
+                    group_display, headers="keys", tablefmt="pipe", showindex=False
+                )
 
-                group = group[display_cols].dropna(axis=1, how="all")
-
-                group.columns = [
-                    col.replace("parameters.", "").replace("stats.", "")
-                    for col in group.columns
-                ]
-
-                markdown_output = group.to_markdown(index=False)
                 if markdown_output:
                     f.write(markdown_output)
-                    # Generate a comparision summary section via LLM which includes the speedup gains and/os losses
-                    f.write("\n\n#### AI Summary\n")
-                    summary = generate_summary(agent, markdown_output)
+                    f.write("\n\n#### Manual Summary\n")
+                    summary = generate_manual_summary(
+                        group.select(["language", "backend", "mean"])
+                    )
                     f.write(summary)
                 f.write("\n\n")
 

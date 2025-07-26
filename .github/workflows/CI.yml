@@ -399,6 +399,8 @@ jobs:
     needs: [publish_to_pypi, publish]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -431,6 +433,6 @@ jobs:
           name: "Release ${{ env.latest_tag }}"
           body: ${{ steps.get_release_notes.outputs.notes }}
           draft: false
-          prerelease: contains(github.ref, 'alpha') || contains(github.ref, 'beta')
+          prerelease: contains(github.ref, 'alpha') || contains(github.ref, 'beta') || contains(github.ref, 'rc')
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

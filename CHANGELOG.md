@@ -2,6 +2,20 @@
 All notable changes to this project will be documented in this file.
 
 
+## [0.3.1-rc.2] - 2025-07-26
+
+
+### Bug Fixes
+
+- (**ci**) Added missing write permission in the github release job ([e98b802](https://github.com/PyDataBlog/simstring_rs/commit/e98b8021403add8a6427526f66a3d1441c4192f7))
+
+
+### Documentation
+
+- (**benchmarks**) Update benchmark results ([74e435e](https://github.com/PyDataBlog/simstring_rs/commit/74e435e322bd65f001885746fd12581b0cca2bd1))
+
+
+
 ## [0.3.1-rc.1] - 2025-07-26
 
 

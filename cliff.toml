@@ -19,7 +19,7 @@ body = """
 {% for group, commits in commits | group_by(attribute="group") %}
     ### {{ group | upper_first }}
     {% for commit in commits %}
-        - {% if commit.scope %}(**{{ commit.scope }}**) {% endif %}{{ commit.message | upper_first }} ([{{ commit.id | truncate(length=7, end="") }}])
+        - {% if commit.scope %}(**{{ commit.scope }}**) {% endif %}{{ commit.message | upper_first }} ([{{ commit.id | truncate(length=7, end="") }}](https://github.com/PyDataBlog/simstring_rs/commit/{{ commit.id }}))
     {% endfor %}
 {% endfor %}
 
@@ -65,7 +65,6 @@ tag_pattern = "v[0-9].*"
 skip_tags = "v0.1.0-beta.1"
 # regex for ignoring tags
 ignore_tags = ""
-link_parsers = [
-  { pattern = "\\b[a-f0-9]{7}\\b", href = "https://github.com/PyDataBlog/simstring_rs/commit/$0" },
-  { pattern = "#(\\d+)", href = "https://github.com/PyDataBlog/simstring_rs/issues/$1" },
+commit_preprocessors = [
+  { pattern = "\\(#(\\d+)\\)", replace = "[#$1](https://github.com/PyDataBlog/simstring_rs/issues/$1)" },
 ]

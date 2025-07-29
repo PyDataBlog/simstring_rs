@@ -32,7 +32,7 @@ jobs:
           python-version: "3.13"
 
       - name: Install cargo-tarpaulin
-        run: cargo install cargo-tarpaulin --version 0.26.0
+        run: cargo install cargo-tarpaulin --version 0.26.0 --force
 
       - name: Set Python interpreter for pyo3
         run: echo "PYTHON_SYS_EXECUTABLE=$(which python3)" >> $GITHUB_ENV

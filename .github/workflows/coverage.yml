@@ -46,7 +46,7 @@ jobs:
 
       - name: Run tests and generate coverage report
         run: |
-          export RUSTFLAGS=$(python3-config --ldflags)
+          export RUSTFLAGS="-L $(python3-config --libdir) -lpython$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")'))"
           cargo tarpaulin --all-features --out Xml --output-dir ./coverage
 
       - name: Upload coverage to Codecov

@@ -31,13 +31,6 @@ jobs:
         with:
           python-version: "3.13"
 
-      - name: Set up uv Python env
-        run: |
-          pip install uv
-          uv venv
-          source .venv/bin/activate
-          uv pip install maturin
-
       - name: Install cargo-tarpaulin
         run: cargo install cargo-tarpaulin --version 0.26.0
 
@@ -46,7 +39,9 @@ jobs:
 
       - name: Run tests and generate coverage report
         run: |
-          export RUSTFLAGS="-L $(python3-config --libdir) -lpython$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")'))"
+          LIBDIR=$(python3 -c "import sysconfig; print(sysconfig.get_config_var('LIBDIR'))")
+          VERSION=$(python3 -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')")
+          export RUSTFLAGS="-L $LIBDIR -lpython$VERSION"
           cargo tarpaulin --all-features --out Xml --output-dir ./coverage
 
       - name: Upload coverage to Codecov

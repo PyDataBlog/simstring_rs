@@ -55,6 +55,15 @@ jobs:
         with:
           version: "1.11"
 
+      - name: Cache python dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            .venv
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
       - name: Run and Compare Benchmarks
         run: |
           # Install python dependencies
@@ -81,14 +90,14 @@ jobs:
           git stash pop
       - name: Commit benchmark results
         if: startsWith(github.ref, 'refs/tags/')
-        uses: stefanzweifel/git-auto-commit-action@v4
+        uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: "docs(benchmarks): update benchmark results"
           file_pattern: BENCHMARKS.md
 
       - name: Post benchmark results to PR
         if: github.event_name == 'pull_request'
-        uses: actions/github-script@v6
+        uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
@@ -142,7 +151,7 @@ jobs:
         run: cargo install cross
 
       - name: Set up cargo cache
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/bin/
@@ -157,6 +166,15 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.13"
+
+      - name: Cache python dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            .venv
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
 
       - name: Check formatting
         run: cargo fmt --all -- --check
@@ -255,6 +273,15 @@ jobs:
           pattern: wheels-*
           path: dist
           merge-multiple: true
+
+      - name: Cache python dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            .venv
+          key: ${{ runner.os }}-pip-${{ matrix.python-version }}-${{ hashFiles('**/pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-${{ matrix.python-version }}-
 
       - name: Install wheel and test dependencies
         shell: bash
@@ -358,6 +385,15 @@ jobs:
         with:
           python-version: "3.13"
 
+      - name: Cache python dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            .venv
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
       - name: Run Python example
         shell: bash
         run: |
@@ -427,7 +463,7 @@ jobs:
           echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Create Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.latest_tag }}
           name: "Release ${{ env.latest_tag }}"

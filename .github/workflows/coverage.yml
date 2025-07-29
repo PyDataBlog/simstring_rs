@@ -11,7 +11,7 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
 
       - name: Cache dependencies
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/bin/
@@ -41,11 +41,17 @@ jobs:
       - name: Install cargo-tarpaulin
         run: cargo install cargo-tarpaulin --version 0.26.0
 
+      - name: Set Python interpreter for pyo3
+        run: echo "PYTHON_SYS_EXECUTABLE=$(which python3)" >> $GITHUB_ENV
+
       - name: Run tests and generate coverage report
-        run: cargo tarpaulin --all-features --workspace --out Xml --output-dir ./coverage --ignore-tests
+        run: |
+          export RUSTFLAGS=$(python3-config --ldflags)
+          cargo tarpaulin --all-features --out Xml --output-dir ./coverage
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v5
         with:
+          token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage/cobertura.xml
           fail_ci_if_error: true

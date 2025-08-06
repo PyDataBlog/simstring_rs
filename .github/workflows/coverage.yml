@@ -31,11 +31,15 @@ jobs:
         with:
           python-version: "3.13"
 
-      - name: Install grcov
-        run: cargo install grcov --force
+      - name: Install grcov and llvm-tools
+        run: |
+          cargo install grcov --force
+          rustup component add llvm-tools
 
       - name: Run tests and generate coverage report
         run: |
+          # Create directory for coverage reports
+          mkdir -p ./coverage
           # Set flags for coverage generation
           export CARGO_INCREMENTAL=0
           export RUSTFLAGS="-Cinstrument-coverage"

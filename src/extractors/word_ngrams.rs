@@ -30,20 +30,24 @@ impl FeatureExtractor for WordNgrams {
             return vec![];
         }
 
-        let tokens: Vec<&str> = text
-            .split(&self.splitter)
-            .filter(|s| !s.is_empty())
-            .collect();
-        let mut padded_tokens: Vec<&str> = Vec::with_capacity(tokens.len() + 2);
+        let tokens = text.split(&self.splitter).filter(|s| !s.is_empty());
 
-        padded_tokens.push(&self.padder);
-        padded_tokens.extend_from_slice(&tokens);
-        padded_tokens.push(&self.padder);
+        // an iterator that includes padding
+        let padded_tokens_iter = std::iter::once(self.padder.as_str())
+            .chain(tokens)
+            .chain(std::iter::once(self.padder.as_str()));
 
-        let ngrams: Vec<String> = padded_tokens
-            .windows(self.n)
-            .map(|window| window.join(" "))
-            .collect();
+        // Use a buffer to collect tokens for each n-gram
+        let mut buffer: Vec<&str> = Vec::with_capacity(self.n);
+        let mut ngrams = Vec::new();
+
+        for token in padded_tokens_iter {
+            buffer.push(token);
+            if buffer.len() == self.n {
+                ngrams.push(buffer.join(" "));
+                buffer.remove(0);
+            }
+        }
 
         super::append_feature_counts(interner, ngrams)
     }

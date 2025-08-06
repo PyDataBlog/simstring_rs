@@ -1,6 +1,5 @@
-use super::Measure;
+use super::{compute_intersection_size, Measure};
 use crate::database::Database;
-use ahash::AHashSet;
 use lasso::Spur;
 
 #[derive(Default, Clone, Copy)]
@@ -23,23 +22,20 @@ impl Measure for Jaccard {
     }
 
     fn similarity(&self, x: &[Spur], y: &[Spur]) -> f64 {
-        let x_set: AHashSet<_> = x.iter().collect();
-        let y_set: AHashSet<_> = y.iter().collect();
-
-        if x_set.is_empty() && y_set.is_empty() {
+        if x.is_empty() && y.is_empty() {
             return 1.0;
         }
-        if x_set.is_empty() || y_set.is_empty() {
+        if x.is_empty() || y.is_empty() {
             return 0.0;
         }
 
-        let intersection_size = x_set.intersection(&y_set).count() as f64;
-        let union_size = x_set.union(&y_set).count() as f64;
+        let intersection_size = compute_intersection_size(x, y);
+        let union_size = (x.len() + y.len() - intersection_size) as f64;
 
         if union_size == 0.0 {
             0.0
         } else {
-            intersection_size / union_size
+            intersection_size as f64 / union_size
         }
     }
 }

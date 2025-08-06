@@ -1,6 +1,5 @@
-use super::Measure;
+use super::{compute_intersection_size, Measure};
 use crate::database::Database;
-use ahash::AHashSet;
 use lasso::Spur;
 
 #[derive(Default, Clone, Copy)]
@@ -27,23 +26,20 @@ impl Measure for Dice {
     }
 
     fn similarity(&self, x: &[Spur], y: &[Spur]) -> f64 {
-        let x_set: AHashSet<_> = x.iter().collect();
-        let y_set: AHashSet<_> = y.iter().collect();
-
-        if x_set.is_empty() && y_set.is_empty() {
+        if x.is_empty() && y.is_empty() {
             return 1.0;
         }
-        if x_set.is_empty() || y_set.is_empty() {
+        if x.is_empty() || y.is_empty() {
             return 0.0;
         }
 
-        let intersection_size = x_set.intersection(&y_set).count() as f64;
-        let denominator = (x_set.len() + y_set.len()) as f64;
+        let intersection_size = compute_intersection_size(x, y);
+        let denominator = (x.len() + y.len()) as f64;
 
         if denominator == 0.0 {
             0.0
         } else {
-            2.0 * intersection_size / denominator
+            2.0 * intersection_size as f64 / denominator
         }
     }
 }

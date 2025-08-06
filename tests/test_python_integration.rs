@@ -45,8 +45,12 @@ fn run_python_tests() {
 
     // Build the python wheel
     println!("--- Building wheel with maturin ---");
+    let mut maturin_args = vec!["build", "--out", "target/wheels"];
+    if env::var("SIMSTRING_RS_COVERAGE").is_err() {
+        maturin_args.push("--release");
+    }
     let maturin_build_cmd = Command::new(maturin_executable_path.to_str().unwrap())
-        .args(["build", "--release", "--out", "target/wheels"])
+        .args(maturin_args)
         .status()
         .expect("Failed to run `maturin build`.");
     if !maturin_build_cmd.success() {

@@ -46,7 +46,7 @@ jobs:
           # Set the path for the raw coverage data
           export LLVM_PROFILE_FILE="target/coverage/simstring_rs-%p-%m.profraw"
           # Run all tests, including the ignored python bindings
-          cargo test --all-features -- --ignored
+          cargo test --all-features -- --include-ignored
           # Generate the coverage report
           grcov . --binary-path ./target/debug/ -s . -t lcov --branch --ignore-not-existing --ignore "/*" --ignore "tests/*" -o ./coverage.lcov
           grcov . --binary-path ./target/debug/ -s . -t cobertura --branch --ignore-not-existing --ignore "/*" --ignore "tests/*" -o ./coverage/cobertura.xml

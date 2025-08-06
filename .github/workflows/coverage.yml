@@ -44,8 +44,8 @@ jobs:
           # Run all tests, including the ignored python bindings
           cargo test --all-features -- --ignored
           # Generate the coverage report
-          grcov . --binary-path ./target/debug/ -s . -t lcov --branch --ignore-not-existing --ignore "/*" "tests/*" -o ./coverage.lcov
-          grcov . --binary-path ./target/debug/ -s . -t cobertura --branch --ignore-not-existing --ignore "/*" "tests/*" -o ./coverage/cobertura.xml
+          grcov . --binary-path ./target/debug/ -s . -t lcov --branch --ignore-not-existing --ignore "/*" --ignore "tests/*" -o ./coverage.lcov
+          grcov . --binary-path ./target/debug/ -s . -t cobertura --branch --ignore-not-existing --ignore "/*" --ignore "tests/*" -o ./coverage/cobertura.xml
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5

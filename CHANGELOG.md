@@ -2,6 +2,22 @@
 All notable changes to this project will be documented in this file.
 
 
+## [0.3.1-rc.3] - 2025-08-11
+
+
+### Documentation
+
+- (**benchmarks**) Update benchmark results ([018f581](https://github.com/PyDataBlog/simstring_rs/commit/018f581f5db30c59055af36bccdcc9f486a8fcef))
+
+
+### Features
+
+- (**ci**) Added test coverage [#39](https://github.com/PyDataBlog/simstring_rs/issues/39) ([5e3efe2](https://github.com/PyDataBlog/simstring_rs/commit/5e3efe2dac9dcceb35e13d91aca318f65645d69b))
+
+- (**perf**) Better search performance by avoiding allocations [#40](https://github.com/PyDataBlog/simstring_rs/issues/40) ([d53e85b](https://github.com/PyDataBlog/simstring_rs/commit/d53e85b51360264cce0bc3f9634a48204315ac3f))
+
+
+
 ## [0.3.1-rc.2] - 2025-07-26
 
 

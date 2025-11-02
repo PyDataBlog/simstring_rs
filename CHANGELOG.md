@@ -2,6 +2,15 @@
 All notable changes to this project will be documented in this file.
 
 
+## [0.3.1] - 2025-11-02
+
+
+### Documentation
+
+- (**benchmarks**) Update benchmark results ([15ddfe2](https://github.com/PyDataBlog/simstring_rs/commit/15ddfe26a3a79e37924afa50e207982873f00e8b))
+
+
+
 ## [0.3.1-rc.3] - 2025-08-11
 
 

@@ -8,8 +8,6 @@ use pyo3::create_exception;
 use pyo3::prelude::*;
 use std::sync::Arc;
 
-// TODO: Lazily lumped all errors here but maybe more specific errors can done? like
-// FeatureExtractionError and the likes
 create_exception!(simstring_rust, SearchError, pyo3::exceptions::PyValueError);
 
 // Wrapper for FeatureExtractor trait as I can't find any direct translation.
@@ -246,7 +244,6 @@ impl PySearcher {
                 SearchError::new_err(format!("Invalid threshold: {val}"))
             }
         })?;
-        // TODO: Explore if the python bindings can handle returning references
         Ok(results.into_iter().map(|s| s.to_string()).collect())
     }
 

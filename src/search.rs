@@ -119,13 +119,10 @@ impl<'db, M: Measure> Searcher<'db, M> {
                     .into_iter()
                     .collect::<FxHashSet<StringId>>()
             })
-            .reduce(
-                FxHashSet::default,
-                |mut acc, set| {
-                    acc.extend(set);
-                    acc
-                },
-            )
+            .reduce(FxHashSet::default, |mut acc, set| {
+                acc.extend(set);
+                acc
+            })
     }
 
     fn overlap_join(

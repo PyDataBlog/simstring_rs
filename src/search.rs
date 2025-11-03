@@ -104,20 +104,25 @@ impl<'db, M: Measure> Searcher<'db, M> {
         let min_feat_size = self.measure.min_feature_size(query_size, alpha);
         let max_feat_size = self.measure.max_feature_size(query_size, alpha, self.db);
 
-        let mut all_candidates: Vec<StringId> = (min_feat_size..=max_feat_size)
+        (min_feat_size..=max_feat_size)
             .into_par_iter()
-            .flat_map(|candidate_size| {
+            .map(|candidate_size| {
                 let tau =
                     self.measure
                         .minimum_common_feature_count(query_size, candidate_size, alpha);
+
+                if tau == 0 || tau > query_size {
+                    return FxHashSet::default();
+                }
+
                 self.overlap_join(query_features, tau, candidate_size)
+                    .into_iter()
+                    .collect::<FxHashSet<StringId>>()
             })
-            .collect();
-
-        all_candidates.sort_unstable();
-        all_candidates.dedup();
-
-        all_candidates.into_iter().collect()
+            .reduce(FxHashSet::default, |mut acc, set| {
+                acc.extend(set);
+                acc
+            })
     }
 
     fn overlap_join(
@@ -135,6 +140,11 @@ impl<'db, M: Measure> Searcher<'db, M> {
             .iter()
             .map(|&feature| self.db.lookup_strings(candidate_size, feature))
             .collect();
+
+        let available_features = feature_sets.iter().filter(|set| set.is_some()).count();
+        if available_features < tau {
+            return Vec::new();
+        }
 
         let mut feature_indices: Vec<usize> = (0..query_features.len()).collect();
         feature_indices.sort_unstable_by_key(|&i| feature_sets[i].map_or(usize::MAX, |s| s.len()));

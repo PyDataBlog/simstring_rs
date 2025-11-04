@@ -298,7 +298,15 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-13, macos-14, macos-15]
+        os:
+          [
+            ubuntu-20.04,
+            ubuntu-latest,
+            windows-latest,
+            macos-13,
+            macos-14,
+            macos-15,
+          ]
         python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
         exclude:
           # Exclude Python 3.10 on macos-14 due to known issues with setup-python

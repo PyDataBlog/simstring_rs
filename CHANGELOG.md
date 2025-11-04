@@ -2,6 +2,25 @@
 All notable changes to this project will be documented in this file.
 
 
+## [0.3.2] - 2025-11-04
+
+
+### Documentation
+
+- (**benchmarks**) Update benchmark results ([4a29a9b](https://github.com/PyDataBlog/simstring_rs/commit/4a29a9b86731678b6572fa86837c5db0db485ecf))
+
+
+### Features
+
+- (**ci**) Exploring support for wheels for old linux distros ([76ae17d](https://github.com/PyDataBlog/simstring_rs/commit/76ae17d1ebfaa2df399a9d9bb7e022382828b055))
+
+
+### Performance
+
+- (**search**) Latest tweaks to boost search performance [#42](https://github.com/PyDataBlog/simstring_rs/issues/42) ([3c91334](https://github.com/PyDataBlog/simstring_rs/commit/3c913347e6876f1bbf87d87780afcb23b6c43602))
+
+
+
 ## [0.3.1] - 2025-11-02
 
 

@@ -248,7 +248,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [windows-latest, macos-latest]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -269,15 +269,37 @@ jobs:
           name: wheels-${{ matrix.os }}
           path: dist
 
+  build_wheels_linux:
+    name: Build manylinux wheels
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Build wheels
+        uses: PyO3/maturin-action@v1
+        with:
+          command: build
+          args: --release --out dist
+          manylinux: "2014"
+
+      - name: Upload wheels
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheels-linux
+          path: dist
+
   test_wheels:
     name: Test wheels on ${{ matrix.os }} / Python ${{ matrix.python-version }}
-    needs: [build_wheels]
+    needs: [build_wheels, build_wheels_linux]
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-13, macos-14, macos-15]
-        python-version: ["3.10", "3.11", "3.12", "3.13"]
+        os: [ubuntu-latest, windows-latest, macos-14, macos-15, macos-latest]
+        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
         exclude:
           # Exclude Python 3.10 on macos-14 due to known issues with setup-python
           - os: macos-14

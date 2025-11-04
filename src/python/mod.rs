@@ -303,9 +303,7 @@ fn simstring_rust(py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
 
     // Add modules to sys.modules to allow direct import
     let sys = PyModule::import(py, "sys")?;
-    let modules = sys
-        .getattr("modules")?
-        .downcast_into::<pyo3::types::PyDict>()?;
+    let modules = sys.getattr("modules")?.cast_into::<pyo3::types::PyDict>()?;
     modules.set_item("simstring_rust.database", database_module)?;
     modules.set_item("simstring_rust.extractors", extractors_module)?;
     modules.set_item("simstring_rust.measures", measures_module)?;

@@ -496,7 +496,7 @@ jobs:
           # This script extracts the content between the latest tag and the previous tag.
           notes=$(awk -v tag="## [${latest_tag##v}]" '
             BEGIN { p = 0 }
-            $0 ~ tag { p = 1; next }
+            index($0, tag) { p = 1; next }
             p && /^## / { exit }
             p { print }
           ' CHANGELOG.md)

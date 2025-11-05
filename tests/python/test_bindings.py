@@ -1,7 +1,9 @@
 import pytest
+from collections import Counter
+
 from simstring_rust.database import HashDb
 from simstring_rust.errors import SearchError
-from simstring_rust.extractors import CharacterNgrams
+from simstring_rust.extractors import CharacterNgrams, WordNgrams
 from simstring_rust.measures import Cosine
 from simstring_rust.searcher import Searcher
 
@@ -66,3 +68,17 @@ class TestSimstringBindings:
 
         with pytest.raises(SearchError, match=r"Invalid threshold: 0(\.0)?"):
             self.searcher.search("test", 0.0)
+
+    def test_character_ngram_apply(self):
+        extractor = CharacterNgrams(n=2, endmarker="$")
+        features = extractor.apply("apple")
+
+        expected = ["$a1", "ap1", "pp1", "pl1", "le1", "e$1"]
+        assert Counter(features) == Counter(expected)
+
+    def test_word_ngram_apply(self):
+        extractor = WordNgrams(n=2, splitter=" ", padder="#")
+        features = extractor.apply("foo bar baz")
+
+        expected = ["# foo1", "foo bar1", "bar baz1", "baz #1"]
+        assert Counter(features) == Counter(expected)

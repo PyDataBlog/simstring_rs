@@ -15,6 +15,9 @@ def main():
     extractor = CharacterNgrams(n=2, endmarker="$")
     print("Using extractor: CharacterNgrams(n=2, endmarker='$')")
 
+    sample_embedding = extractor.apply("Some text")
+    print(f"Sample embedding for 'Some text': {sample_embedding}")
+
     # Choose a similarity measure.
     # Options: Cosine(), Dice(), Jaccard(), Overlap(), ExactMatch()
     measure = Cosine()

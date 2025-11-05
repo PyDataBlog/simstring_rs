@@ -36,6 +36,16 @@ impl PyCharacterNgrams {
     fn new(n: usize, endmarker: &str) -> Self {
         Self(CharacterNgrams::new(n, endmarker))
     }
+
+    fn apply(&self, text: &str) -> Vec<String> {
+        let mut interner = lasso::Rodeo::default();
+        let features = self.0.features(text, &mut interner);
+
+        features
+            .into_iter()
+            .map(|spur| interner.resolve(&spur).to_string())
+            .collect()
+    }
 }
 
 #[pyclass(name = "WordNgrams")]
@@ -47,6 +57,16 @@ impl PyWordNgrams {
     #[new]
     fn new(n: usize, splitter: &str, padder: &str) -> Self {
         Self(WordNgrams::new(n, splitter, padder))
+    }
+
+    fn apply(&self, text: &str) -> Vec<String> {
+        let mut interner = lasso::Rodeo::default();
+        let features = self.0.features(text, &mut interner);
+
+        features
+            .into_iter()
+            .map(|spur| interner.resolve(&spur).to_string())
+            .collect()
     }
 }
 

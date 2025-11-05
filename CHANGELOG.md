@@ -2,6 +2,20 @@
 All notable changes to this project will be documented in this file.
 
 
+## [0.3.3] - 2025-11-05
+
+
+### Documentation
+
+- (**benchmarks**) Update benchmark results ([9a1999f](https://github.com/PyDataBlog/simstring_rs/commit/9a1999fb377a6a514b49c5efdaa981a9c7b9a458))
+
+
+### Features
+
+- (**bindings**) Expose extractor for direct usage in Python [#47](https://github.com/PyDataBlog/simstring_rs/issues/47) ([8a6b8ae](https://github.com/PyDataBlog/simstring_rs/commit/8a6b8ae4e183cf491d857402cd8f15ba015181a7))
+
+
+
 ## [0.3.2] - 2025-11-04
 
 

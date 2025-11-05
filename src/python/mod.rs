@@ -10,11 +10,58 @@ use std::sync::Arc;
 
 create_exception!(simstring_rust, SearchError, pyo3::exceptions::PyValueError);
 
+#[derive(Clone)]
+struct CustomExtractorInner {
+    extractor: Py<PyAny>,
+}
+
+unsafe impl Send for CustomExtractorInner {}
+unsafe impl Sync for CustomExtractorInner {}
+
+impl CustomExtractorInner {
+    fn new(extractor: Py<PyAny>) -> Self {
+        Self { extractor }
+    }
+
+    fn collect_raw_features(&self, text: &str) -> PyResult<Vec<String>> {
+        Python::with_gil(|py| {
+            let extractor = self.extractor.bind(py);
+            let result = extractor.call_method1("apply", (text,))?;
+            let iter = result.iter()?;
+
+            let mut features = Vec::new();
+            for item in iter {
+                let item = item?;
+                features.push(item.extract::<String>()?);
+            }
+
+            Ok(features)
+        })
+    }
+
+    fn features(&self, text: &str, interner: &mut lasso::Rodeo) -> PyResult<Vec<lasso::Spur>> {
+        let raw = self.collect_raw_features(text)?;
+        Ok(super::append_feature_counts(interner, raw))
+    }
+
+    fn apply(&self, text: &str) -> PyResult<Vec<String>> {
+        let raw = self.collect_raw_features(text)?;
+        let mut interner = lasso::Rodeo::default();
+        let spurs = super::append_feature_counts(&mut interner, raw);
+
+        Ok(spurs
+            .into_iter()
+            .map(|spur| interner.resolve(&spur).to_string())
+            .collect())
+    }
+}
+
 // Wrapper for FeatureExtractor trait as I can't find any direct translation.
 #[derive(Clone)]
 enum PyFeatureExtractor {
     Character(CharacterNgrams),
     Word(WordNgrams),
+    Custom(CustomExtractorInner),
 }
 
 impl FeatureExtractor for PyFeatureExtractor {
@@ -22,6 +69,13 @@ impl FeatureExtractor for PyFeatureExtractor {
         match self {
             PyFeatureExtractor::Character(e) => e.features(text, interner),
             PyFeatureExtractor::Word(e) => e.features(text, interner),
+            PyFeatureExtractor::Custom(e) => match e.features(text, interner) {
+                Ok(features) => features,
+                Err(err) => {
+                    Python::with_gil(|py| err.print(py));
+                    panic!("Custom extractor apply() raised an exception");
+                }
+            },
         }
     }
 }
@@ -67,6 +121,28 @@ impl PyWordNgrams {
             .into_iter()
             .map(|spur| interner.resolve(&spur).to_string())
             .collect()
+    }
+}
+
+#[pyclass(name = "CustomExtractor")]
+#[derive(Clone)]
+struct PyCustomExtractor(CustomExtractorInner);
+
+#[pymethods]
+impl PyCustomExtractor {
+    #[new]
+    fn new(extractor: &Bound<'_, PyAny>) -> PyResult<Self> {
+        if !extractor.hasattr("apply")? {
+            return Err(pyo3::exceptions::PyTypeError::new_err(
+                "Custom extractor must provide an apply(text: str) -> Iterable[str] method",
+            ));
+        }
+
+        Ok(Self(CustomExtractorInner::new(extractor.unbind())))
+    }
+
+    fn apply(&self, text: &str) -> PyResult<Vec<String>> {
+        self.0.apply(text)
     }
 }
 
@@ -193,9 +269,11 @@ impl PyHashDb {
                 PyFeatureExtractor::Character(char_ngram.0.clone())
             } else if let Ok(word_ngram) = extractor.extract::<PyRef<PyWordNgrams>>() {
                 PyFeatureExtractor::Word(word_ngram.0.clone())
+            } else if let Ok(custom) = extractor.extract::<PyRef<PyCustomExtractor>>() {
+                PyFeatureExtractor::Custom(custom.0.clone())
             } else {
                 return Err(pyo3::exceptions::PyTypeError::new_err(
-                    "Extractor must be CharacterNgrams or WordNgrams",
+                    "Extractor must be CharacterNgrams, WordNgrams, or CustomExtractor",
                 ));
             };
 
@@ -300,6 +378,7 @@ fn simstring_rust(py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     let extractors_module = PyModule::new(py, "extractors")?;
     extractors_module.add_class::<PyCharacterNgrams>()?;
     extractors_module.add_class::<PyWordNgrams>()?;
+    extractors_module.add_class::<PyCustomExtractor>()?;
     m.add_submodule(&extractors_module)?;
 
     // Measures submodule

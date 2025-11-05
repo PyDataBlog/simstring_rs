@@ -3,7 +3,7 @@ from collections import Counter
 
 from simstring_rust.database import HashDb
 from simstring_rust.errors import SearchError
-from simstring_rust.extractors import CharacterNgrams, WordNgrams
+from simstring_rust.extractors import CharacterNgrams, WordNgrams, CustomExtractor
 from simstring_rust.measures import Cosine
 from simstring_rust.searcher import Searcher
 
@@ -82,3 +82,29 @@ class TestSimstringBindings:
 
         expected = ["# foo1", "foo bar1", "bar baz1", "baz #1"]
         assert Counter(features) == Counter(expected)
+
+    def test_custom_extractor_apply(self):
+        class UnigramExtractor:
+            def apply(self, text: str):
+                return list(text)
+
+        extractor = CustomExtractor(UnigramExtractor())
+        features = extractor.apply("foo")
+
+        expected = ["f1", "o1", "o2"]
+        assert Counter(features) == Counter(expected)
+
+    def test_custom_extractor_in_db(self):
+        class UnigramExtractor:
+            def apply(self, text: str):
+                return list(text)
+
+        extractor = CustomExtractor(UnigramExtractor())
+        db = HashDb(extractor)
+        db.insert("foo")
+        db.insert("bar")
+
+        searcher = Searcher(db, Cosine())
+        results = searcher.search("foo", 0.8)
+
+        assert results == ["foo"]

@@ -12,7 +12,7 @@ create_exception!(simstring_rust, SearchError, pyo3::exceptions::PyValueError);
 
 #[derive(Clone)]
 struct CustomExtractorInner {
-    extractor: Py<PyAny>,
+    extractor: Arc<Py<PyAny>>,
 }
 
 unsafe impl Send for CustomExtractorInner {}
@@ -20,14 +20,17 @@ unsafe impl Sync for CustomExtractorInner {}
 
 impl CustomExtractorInner {
     fn new(extractor: Py<PyAny>) -> Self {
-        Self { extractor }
+        Self {
+            extractor: Arc::new(extractor),
+        }
     }
 
     fn collect_raw_features(&self, text: &str) -> PyResult<Vec<String>> {
-        Python::with_gil(|py| {
-            let extractor = self.extractor.bind(py);
+        let extractor = Arc::clone(&self.extractor);
+        Python::attach(|py| {
+            let extractor = extractor.bind(py);
             let result = extractor.call_method1("apply", (text,))?;
-            let iter = result.iter()?;
+            let iter = result.try_iter()?;
 
             let mut features = Vec::new();
             for item in iter {
@@ -41,13 +44,13 @@ impl CustomExtractorInner {
 
     fn features(&self, text: &str, interner: &mut lasso::Rodeo) -> PyResult<Vec<lasso::Spur>> {
         let raw = self.collect_raw_features(text)?;
-        Ok(super::append_feature_counts(interner, raw))
+        Ok(crate::extractors::append_feature_counts(interner, raw))
     }
 
     fn apply(&self, text: &str) -> PyResult<Vec<String>> {
         let raw = self.collect_raw_features(text)?;
         let mut interner = lasso::Rodeo::default();
-        let spurs = super::append_feature_counts(&mut interner, raw);
+        let spurs = crate::extractors::append_feature_counts(&mut interner, raw);
 
         Ok(spurs
             .into_iter()
@@ -72,7 +75,7 @@ impl FeatureExtractor for PyFeatureExtractor {
             PyFeatureExtractor::Custom(e) => match e.features(text, interner) {
                 Ok(features) => features,
                 Err(err) => {
-                    Python::with_gil(|py| err.print(py));
+                    Python::attach(|py| err.print(py));
                     panic!("Custom extractor apply() raised an exception");
                 }
             },
@@ -131,14 +134,17 @@ struct PyCustomExtractor(CustomExtractorInner);
 #[pymethods]
 impl PyCustomExtractor {
     #[new]
-    fn new(extractor: &Bound<'_, PyAny>) -> PyResult<Self> {
-        if !extractor.hasattr("apply")? {
-            return Err(pyo3::exceptions::PyTypeError::new_err(
-                "Custom extractor must provide an apply(text: str) -> Iterable[str] method",
-            ));
-        }
-
-        Ok(Self(CustomExtractorInner::new(extractor.unbind())))
+    fn new(extractor: Py<PyAny>) -> PyResult<Self> {
+        Python::attach(|py| {
+            let bound = extractor.bind(py);
+            if !bound.hasattr("apply")? {
+                Err(pyo3::exceptions::PyTypeError::new_err(
+                    "Custom extractor must provide an apply(text: str) -> Iterable[str] method",
+                ))
+            } else {
+                Ok(Self(CustomExtractorInner::new(extractor)))
+            }
+        })
     }
 
     fn apply(&self, text: &str) -> PyResult<Vec<String>> {

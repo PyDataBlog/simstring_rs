@@ -9,8 +9,8 @@ def run_benchmarks():
     benches_dir = Path(__file__).parent
     results = []
 
-    # Run Python benchmarks
-    for script in ["bench.py", "bench_rust.py"]:
+    # Run Python benchmark suite
+    for script in ["bench.py", "bench_rust.py", "bench_simstring_cpp.py"]:
         process = subprocess.run(
             ["python", str(benches_dir / script)],
             capture_output=True,
@@ -63,4 +63,3 @@ def run_benchmarks():
 if __name__ == "__main__":
     run_benchmarks()
     compare_benchmarks()
-

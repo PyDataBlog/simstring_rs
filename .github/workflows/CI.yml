@@ -32,7 +32,7 @@ jobs:
           sudo apt-get install -y software-properties-common
           sudo add-apt-repository universe
           sudo apt-get update
-          sudo apt-get install -y build-essential simstring-bin
+          sudo apt-get install -y build-essential autoconf automake libtool simstring-bin
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable

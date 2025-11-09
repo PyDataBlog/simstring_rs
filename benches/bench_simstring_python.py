@@ -42,6 +42,7 @@ setup.py replacement for building the SimString SWIG module.
 \"\"\"
 import os
 import os.path
+import sys
 from setuptools import setup, Extension
 
 
@@ -53,11 +54,16 @@ def get_includedir():
     return os.path.join(get_rootdir(), "include")
 
 
+libraries = []
+if sys.platform == "darwin":
+    libraries.append("iconv")
+
+
 simstring_module = Extension(
     "_simstring",
     sources=["export.cpp", "export_wrap.cpp"],
     include_dirs=[get_includedir()],
-    libraries=["iconv"],
+    libraries=libraries,
     extra_compile_args=["-std=c++11"],
     language="c++",
 )

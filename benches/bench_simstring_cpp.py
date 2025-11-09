@@ -6,6 +6,8 @@ This script clones/builds https://github.com/chokkan/simstring into
 benches/.simstring_cpp (if needed) and benchmarks using the CLI binary
 """
 
+from __future__ import annotations
+
 import json
 import os
 import statistics
@@ -30,9 +32,24 @@ NGRAM_SIZES = (2, 3, 4)
 THRESHOLDS = (0.6, 0.7, 0.8, 0.9)
 
 
+DEBUG = bool(os.environ.get("SIMSTRING_BENCH_DEBUG"))
+
+
 def run_command(cmd: list[str], cwd: Path | None = None) -> None:
-    """Run a command, streaming output, raising on failure."""
-    subprocess.run(cmd, cwd=cwd, check=True)
+    """Run a command quietly unless it fails or debug is enabled."""
+    proc = subprocess.run(
+        cmd, cwd=cwd, check=False, text=True, capture_output=not DEBUG
+    )
+    if DEBUG:
+        # Stream output immediately in debug mode for easier troubleshooting.
+        pass
+    if proc.returncode != 0:
+        stdout = proc.stdout or ""
+        stderr = proc.stderr or ""
+        raise RuntimeError(
+            f"Command {' '.join(cmd)} failed with code {proc.returncode}\n"
+            f"stdout:\n{stdout}\n\nstderr:\n{stderr}"
+        )
 
 
 def ensure_simstring_binary() -> Path:
@@ -46,17 +63,18 @@ def ensure_simstring_binary() -> Path:
         run_command(["git", "clone", "--depth", "1", REPO_URL, str(SRC_DIR)])
 
     autogen = SRC_DIR / "autogen.sh"
-    if autogen.exists():
+    if autogen.exists() and not (SRC_DIR / "configure").exists():
         run_command(["/bin/sh", str(autogen)], cwd=SRC_DIR)
 
     # Fresh configure against the local install dir.
-    run_command(
-        [
-            "./configure",
-            f"--prefix={INSTALL_DIR}",
-        ],
-        cwd=SRC_DIR,
-    )
+    if not (SRC_DIR / "Makefile").exists():
+        run_command(
+            [
+                "./configure",
+                f"--prefix={INSTALL_DIR}",
+            ],
+            cwd=SRC_DIR,
+        )
 
     # Build & install.
     jobs = os.cpu_count() or 2

@@ -24,6 +24,7 @@ THIS_DIR = Path(__file__).parent
 WORK_DIR = THIS_DIR / ".simstring_cpp"
 SRC_DIR = WORK_DIR / "src"
 INSTALL_DIR = WORK_DIR / "install"
+SIMSTRING_BIN = INSTALL_DIR / "bin" / "simstring"
 PYTHON_DIR = SRC_DIR / "swig" / "python"
 REPO_URL = "https://github.com/chokkan/simstring.git"
 
@@ -32,6 +33,8 @@ MEASUREMENT_TIME = int(os.environ.get("SIMSTRING_BENCH_DURATION", "20"))
 MAX_ITERATIONS = int(os.environ.get("SIMSTRING_BENCH_MAX_ITERATIONS", "100"))
 NGRAM_SIZES = (2, 3, 4)
 THRESHOLDS = (0.6, 0.7, 0.8, 0.9)
+
+DEBUG = bool(os.environ.get("SIMSTRING_BENCH_DEBUG"))
 
 CUSTOM_SETUP_TEMPLATE = """#!/usr/bin/env python
 \"\"\"
@@ -71,7 +74,16 @@ setup(
 
 
 def run_command(cmd: list[str], cwd: Path | None = None) -> None:
-    subprocess.run(cmd, cwd=cwd, check=True)
+    proc = subprocess.run(
+        cmd, cwd=cwd, check=False, text=True, capture_output=not DEBUG
+    )
+    if proc.returncode != 0:
+        stdout = proc.stdout or ""
+        stderr = proc.stderr or ""
+        raise RuntimeError(
+            f"Command {' '.join(cmd)} failed with code {proc.returncode}\n"
+            f"stdout:\n{stdout}\n\nstderr:\n{stderr}"
+        )
 
 
 def ensure_repo() -> None:
@@ -84,15 +96,17 @@ def ensure_repo() -> None:
 def ensure_configured() -> None:
     ensure_repo()
     autogen = SRC_DIR / "autogen.sh"
-    if autogen.exists():
+    if autogen.exists() and not (SRC_DIR / "configure").exists():
         run_command(["/bin/sh", str(autogen)], cwd=SRC_DIR)
-    run_command(["./configure", f"--prefix={INSTALL_DIR}"], cwd=SRC_DIR)
+    if not (SRC_DIR / "Makefile").exists():
+        run_command(["./configure", f"--prefix={INSTALL_DIR}"], cwd=SRC_DIR)
 
 
 def ensure_built() -> None:
     ensure_configured()
-    jobs = os.cpu_count() or 2
-    run_command(["make", f"-j{jobs}"], cwd=SRC_DIR)
+    if not SIMSTRING_BIN.exists():
+        jobs = os.cpu_count() or 2
+        run_command(["make", f"-j{jobs}"], cwd=SRC_DIR)
 
 
 def ensure_python_module() -> None:
@@ -122,7 +136,9 @@ def measure(func: Callable[[], None]) -> float:
     return (time.perf_counter() - start) * 1000.0
 
 
-def build_database(simstring_mod, path: Path, names: Iterable[str], ngram_size: int) -> None:
+def build_database(
+    simstring_mod, path: Path, names: Iterable[str], ngram_size: int
+) -> None:
     writer = simstring_mod.writer(str(path), ngram_size, True, False)
     for name in names:
         writer.insert(name)
@@ -218,7 +234,7 @@ def main() -> None:
     ensure_python_module()
     if str(PYTHON_DIR) not in sys.path:
         sys.path.insert(0, str(PYTHON_DIR))
-    import simstring as simstring_mod  # type: ignore
+    import simstring as simstring_mod
 
     names = load_company_names()
     results: list[dict] = []

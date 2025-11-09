@@ -10,7 +10,7 @@ def run_benchmarks():
     results = []
 
     # Run Python benchmark suite
-    for script in ["bench.py", "bench_rust.py", "bench_simstring_cpp.py"]:
+    for script in ["bench.py", "bench_rust.py", "bench_simstring_cpp.py", "bench_simstring_python.py"]:
         process = subprocess.run(
             ["python", str(benches_dir / script)],
             capture_output=True,

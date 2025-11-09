@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """
 Benchmarks for the original C++ SimString CLI.
 

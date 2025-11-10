@@ -43,7 +43,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
-          python-version: "3.14t"
+          python-version: "3.14"
 
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
@@ -97,7 +97,7 @@ jobs:
 
       - name: Post benchmark results to PR
         if: github.event_name == 'pull_request'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
@@ -425,7 +425,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
-          python-version: "3.14t"
+          python-version: "3.14"
 
       - name: Cache python dependencies
         uses: actions/cache@v4

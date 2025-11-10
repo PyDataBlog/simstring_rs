@@ -130,7 +130,7 @@ This project is licensed under the MIT License.
 
 The `benches/run_benches.py` harness compares several language bindings (Rust, Python, Julia, Ruby, C++).
 
-- `git`, `autoconf`, `automake`, `libtool`, `make`, and a C++ compiler (`g++`) to build the C++ CLI.
+- `git`, `autoconf`, `automake`, `libtool`, `make`, `python`, `uv` and a C++ compiler (`g++`) to build the C++ CLI.
 
 The C++ sources are cloned into `benches/.simstring_cpp/` and a local copy of the `simstring` binary is installed
 under that directory. If you need to rebuild from scratch, remove `benches/.simstring_cpp/` before re-running the benchmark suite.

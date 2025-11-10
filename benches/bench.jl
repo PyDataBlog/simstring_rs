@@ -55,7 +55,7 @@ function bench_search(results::Vector)
         for threshold in [0.6, 0.7, 0.8]
             b = @benchmarkable begin
                 for term in $search_terms
-                    SimString.search(SimString.Cosine(), $db, term; α=$threshold, ranked=true)
+                    SimString.search(SimString.Cosine(), $db, term; α=$threshold, ranked=false)
                 end
             end samples=100 seconds=20
 

@@ -48,16 +48,14 @@ fn bench_insert(results: &mut Vec<BenchmarkResult>) {
         let mut iteration = 0;
 
         while start_time.elapsed() < Duration::from_secs(20) && iteration < 100 {
-            let setup_start = Instant::now();
             let fe = Arc::new(CharacterNgrams::new(*ngram_size, " "));
             let mut db = HashDb::new(fe);
-            let setup_duration = setup_start.elapsed();
 
             let start = Instant::now();
             for company in &companies {
                 db.insert(company.clone());
             }
-            let duration = start.elapsed() - setup_duration;
+            let duration = start.elapsed();
             measurements.push(duration.as_secs_f64() * 1000.0);
             iteration += 1;
         }
@@ -114,7 +112,7 @@ fn bench_search(results: &mut Vec<BenchmarkResult>) {
             while start_time.elapsed() < Duration::from_secs(20) && iteration < 100 {
                 let start = Instant::now();
                 for term in &search_terms {
-                    let _ = searcher.ranked_search(term, *threshold).unwrap();
+                    let _ = searcher.search(term, *threshold).unwrap();
                 }
                 let duration = start.elapsed();
                 measurements.push(duration.as_secs_f64() * 1000.0);

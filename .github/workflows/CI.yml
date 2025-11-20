@@ -485,31 +485,22 @@ jobs:
         with:
           fetch-depth: 0 # get all tags
 
-      - name: Get release notes
-        id: get_release_notes
-        run: |
-          # Get the latest tag
-          latest_tag=$(git describe --tags --abbrev=0)
-          echo "latest_tag=${latest_tag}" >> $GITHUB_ENV
-
-          # Extract release notes from CHANGELOG.md
-          # This script extracts the content between the latest tag and the previous tag.
-          notes=$(awk -v tag="## [${latest_tag##v}]" '
-            BEGIN { p = 0 }
-            index($0, tag) { p = 1; next }
-            p && /^## / { exit }
-            p { print }
-          ' CHANGELOG.md)
-          echo "notes<<EOF" >> $GITHUB_OUTPUT
-          echo "$notes" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+      - name: Generate a changelog
+        uses: orhun/git-cliff-action@v4
+        id: git-cliff
+        with:
+          config: cliff.toml
+          args: -vv --latest --strip header
+        env:
+          OUTPUT: CHANGELOG.md
+          GITHUB_REPO: ${{ github.repository }}
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ env.latest_tag }}
-          name: "Release ${{ env.latest_tag }}"
-          body: ${{ steps.get_release_notes.outputs.notes }}
+          tag_name: ${{ github.ref_name }}
+          name: "Release ${{ github.ref_name }}"
+          body: ${{ steps.git-cliff.outputs.content }}
           draft: false
           prerelease: contains(github.ref, 'alpha') || contains(github.ref, 'beta') || contains(github.ref, 'rc')
         env:

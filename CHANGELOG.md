@@ -1,221 +1,130 @@
-# Changelog
-All notable changes to this project will be documented in this file.
+## What's Changed in 0.3.4
+* feat(bindings): Expose extractor interface via CustomExtractor for Python bindings by @PyDataBlog in [#50](https://github.com/PyDataBlog/simstring_rs/pull/50)
+* feat(ci): Initial benchmark support for original C++ implementation by @PyDataBlog in [#54](https://github.com/PyDataBlog/simstring_rs/pull/54)
+* fix(ci): github release notes were skipping not rc tags by @PyDataBlog in [#49](https://github.com/PyDataBlog/simstring_rs/pull/49)
+* docs(benchmarks): update benchmark results by @PyDataBlog
 
+**Full Changelog**: https://github.com/PyDataBlog/simstring_rs/compare/v0.3.3...0.3.4
 
-## [0.3.3] - 2025-11-05
+## What's Changed in 0.3.3
+* chore(release): 0.3.3 by @PyDataBlog
+* feat(bindings): expose extractor for direct usage in Python by @PyDataBlog in [#47](https://github.com/PyDataBlog/simstring_rs/pull/47)
+* docs(benchmarks): update benchmark results by @PyDataBlog
 
+**Full Changelog**: https://github.com/PyDataBlog/simstring_rs/compare/v0.3.2...v0.3.3
 
-### Documentation
+## What's Changed in 0.3.2
+* chore(release): 0.3.2 by @PyDataBlog
+* feat(ci): Exploring support for wheels for old linux distros by @PyDataBlog in [#45](https://github.com/PyDataBlog/simstring_rs/pull/45)
+* perf(search): latest tweaks to boost search performance by @PyDataBlog in [#42](https://github.com/PyDataBlog/simstring_rs/pull/42)
+* docs(benchmarks): update benchmark results by @PyDataBlog
 
-- (**benchmarks**) Update benchmark results ([9a1999f](https://github.com/PyDataBlog/simstring_rs/commit/9a1999fb377a6a514b49c5efdaa981a9c7b9a458))
+**Full Changelog**: https://github.com/PyDataBlog/simstring_rs/compare/v0.3.1...v0.3.2
 
+## What's Changed in 0.3.1
+* chore(release): 0.3.1 by @PyDataBlog
+* docs(benchmarks): update benchmark results by @PyDataBlog
 
-### Features
+**Full Changelog**: https://github.com/PyDataBlog/simstring_rs/compare/v0.3.1-rc.3...v0.3.1
 
-- (**bindings**) Expose extractor for direct usage in Python [#47](https://github.com/PyDataBlog/simstring_rs/issues/47) ([8a6b8ae](https://github.com/PyDataBlog/simstring_rs/commit/8a6b8ae4e183cf491d857402cd8f15ba015181a7))
+## What's Changed in 0.3.1-rc.3
+* chore(release): 0.3.1-rc.3 by @PyDataBlog
+* feat(perf): better search performance by avoiding allocations by @PyDataBlog in [#40](https://github.com/PyDataBlog/simstring_rs/pull/40)
+* feat(ci): Added test coverage by @PyDataBlog in [#39](https://github.com/PyDataBlog/simstring_rs/pull/39)
+* docs(benchmarks): update benchmark results by @PyDataBlog
 
+**Full Changelog**: https://github.com/PyDataBlog/simstring_rs/compare/v0.3.1-rc.2...v0.3.1-rc.3
 
+## What's Changed in 0.3.1-rc.2
+* chore(release): 0.3.1-rc.2 by @PyDataBlog
+* fix(ci): added missing write permission in the github release job by @PyDataBlog
+* docs(benchmarks): update benchmark results by @PyDataBlog
 
-## [0.3.2] - 2025-11-04
+**Full Changelog**: https://github.com/PyDataBlog/simstring_rs/compare/v0.3.1-rc.1...v0.3.1-rc.2
 
+## What's Changed in 0.3.1-rc.1
+* chore(release): 0.3.1-rc.1 by @PyDataBlog
+* chore(ci): added missing hrefs in changelogs & added specs to benchmarks by @PyDataBlog in [#37](https://github.com/PyDataBlog/simstring_rs/pull/37)
+* docs(benchmarks): update benchmark results by @PyDataBlog
 
-### Documentation
+**Full Changelog**: https://github.com/PyDataBlog/simstring_rs/compare/v0.3.1-beta.3...v0.3.1-rc.1
 
-- (**benchmarks**) Update benchmark results ([4a29a9b](https://github.com/PyDataBlog/simstring_rs/commit/4a29a9b86731678b6572fa86837c5db0db485ecf))
+## What's Changed in 0.3.1-beta.3
+* chore(release): 0.3.1-beta.3 by @PyDataBlog
+* fix(ci): Attempt to fix broken auto commit of benchmark results by @PyDataBlog in [#32](https://github.com/PyDataBlog/simstring_rs/pull/32)
 
+**Full Changelog**: https://github.com/PyDataBlog/simstring_rs/compare/v0.3.1-beta.2...v0.3.1-beta.3
 
-### Features
+## What's Changed in 0.3.1-beta.2
+* chore(release): 0.3.1-beta.2 by @PyDataBlog
+* fix(ci): Added missing dist file path for python wheels by @PyDataBlog in [#31](https://github.com/PyDataBlog/simstring_rs/pull/31)
+* fix(ci): Moved repo urls for maturin to env vars by @PyDataBlog in [#30](https://github.com/PyDataBlog/simstring_rs/pull/30)
+* fix(ci): maturin can't publish generated bindings by @PyDataBlog in [#29](https://github.com/PyDataBlog/simstring_rs/pull/29)
+* feat(ci): Added pypi and test pypi publishing jobs by @PyDataBlog in [#24](https://github.com/PyDataBlog/simstring_rs/pull/24)
+* docs(benchmarks): update benchmark results by @PyDataBlog
+* chore(release): 0.3.1-beta.1 by @PyDataBlog
+* docs(benchmarks): update benchmark results by @PyDataBlog
+* fix(ci): remove old wheels from current jobs by @PyDataBlog in [#28](https://github.com/PyDataBlog/simstring_rs/pull/28)
+* docs(benchmarks): update benchmark results by @PyDataBlog
 
-- (**ci**) Exploring support for wheels for old linux distros ([76ae17d](https://github.com/PyDataBlog/simstring_rs/commit/76ae17d1ebfaa2df399a9d9bb7e022382828b055))
+**Full Changelog**: https://github.com/PyDataBlog/simstring_rs/compare/v0.3.1-alpha.1...v0.3.1-beta.2
 
+## What's Changed in 0.3.1-alpha.1
+* chore(release): 0.3.1-alpha.1 by @PyDataBlog
+* docs(benchmarks): update benchmark results by @PyDataBlog
+* fix(release): fixed hyperlink bug in git-cliff config by @PyDataBlog in [#27](https://github.com/PyDataBlog/simstring_rs/pull/27)
+* docs(benchmarks): update benchmark results by @PyDataBlog
+* fix(release): Get rid of git-cliff as a dev dependencies by @PyDataBlog in [#26](https://github.com/PyDataBlog/simstring_rs/pull/26)
+* docs(benchmarks): update benchmark results by @PyDataBlog
+* feat(release): Initial exploration of an automated release management system by @PyDataBlog in [#25](https://github.com/PyDataBlog/simstring_rs/pull/25)
+* docs(benchmarks): update benchmark results by @PyDataBlog
+* feat!(benchmarks): Refactored benchmarks to produce structure outputs by @PyDataBlog in [#23](https://github.com/PyDataBlog/simstring_rs/pull/23)
 
-### Performance
+**Full Changelog**: https://github.com/PyDataBlog/simstring_rs/compare/v0.3.0...v0.3.1-alpha.1
 
-- (**search**) Latest tweaks to boost search performance [#42](https://github.com/PyDataBlog/simstring_rs/issues/42) ([3c91334](https://github.com/PyDataBlog/simstring_rs/commit/3c913347e6876f1bbf87d87780afcb23b6c43602))
+## What's Changed in 0.3.0
+* feat(python): Add python bindings to the project by @PyDataBlog in [#21](https://github.com/PyDataBlog/simstring_rs/pull/21)
 
+**Full Changelog**: https://github.com/PyDataBlog/simstring_rs/compare/v0.2.0...v0.3.0
 
+## What's Changed in 0.2.0
+* refactor(api): Optimize data structures to avoid unnecessary allocations and enable parallel searches by @PyDataBlog in [#18](https://github.com/PyDataBlog/simstring_rs/pull/18)
 
-## [0.3.1] - 2025-11-02
+**Full Changelog**: https://github.com/PyDataBlog/simstring_rs/compare/v0.1.3...v0.2.0
 
+## What's Changed in 0.1.3
+* feat: PR and Issues template by @PyDataBlog in [#17](https://github.com/PyDataBlog/simstring_rs/pull/17)
+* added order indipendence test by @icfly2 in [#12](https://github.com/PyDataBlog/simstring_rs/pull/12)
 
-### Documentation
+### New Contributors
+* @icfly2 made their first contribution in [#12](https://github.com/PyDataBlog/simstring_rs/pull/12)
 
-- (**benchmarks**) Update benchmark results ([15ddfe2](https://github.com/PyDataBlog/simstring_rs/commit/15ddfe26a3a79e37924afa50e207982873f00e8b))
+**Full Changelog**: https://github.com/PyDataBlog/simstring_rs/compare/v0.1.2...v0.1.3
 
+## What's Changed in 0.1.2
+* Release: Initial benchmarks compared to other implementations by @PyDataBlog in [#13](https://github.com/PyDataBlog/simstring_rs/pull/13)
+* Feat: Initial  benchmark suite by @PyDataBlog in [#11](https://github.com/PyDataBlog/simstring_rs/pull/11)
 
+**Full Changelog**: https://github.com/PyDataBlog/simstring_rs/compare/v0.1.1...v0.1.2
 
-## [0.3.1-rc.3] - 2025-08-11
+## What's Changed in 0.1.1
+* WIP: Initial proposed search method for hashdb by @PyDataBlog in [#7](https://github.com/PyDataBlog/simstring_rs/pull/7)
 
+**Full Changelog**: https://github.com/PyDataBlog/simstring_rs/compare/v0.1.0...v0.1.1
 
-### Documentation
+## What's Changed in 0.1.0
+* initial WIP release of simsstring_rust by @PyDataBlog
+* Set version to 0.1.0 for initial release of simsstring_rust by @PyDataBlog
+* Set version to 0.1.0 for initial release by @PyDataBlog
+* Bumped version to v0.1.3 by @PyDataBlog
+* Fixed imports based on new name by @PyDataBlog
+* Rename crate to simstring_rust and update metadata by @PyDataBlog
+* Fix: keywords not exceeding 5 items by @PyDataBlog in [#3](https://github.com/PyDataBlog/simstring_rs/pull/3)
+* Fix: Added tag trigger to CI workflow by @PyDataBlog in [#2](https://github.com/PyDataBlog/simstring_rs/pull/2)
+* Initial API structure by @PyDataBlog in [#1](https://github.com/PyDataBlog/simstring_rs/pull/1)
+* Init: Initial commit by @PyDataBlog
 
-- (**benchmarks**) Update benchmark results ([018f581](https://github.com/PyDataBlog/simstring_rs/commit/018f581f5db30c59055af36bccdcc9f486a8fcef))
-
-
-### Features
-
-- (**ci**) Added test coverage [#39](https://github.com/PyDataBlog/simstring_rs/issues/39) ([5e3efe2](https://github.com/PyDataBlog/simstring_rs/commit/5e3efe2dac9dcceb35e13d91aca318f65645d69b))
-
-- (**perf**) Better search performance by avoiding allocations [#40](https://github.com/PyDataBlog/simstring_rs/issues/40) ([d53e85b](https://github.com/PyDataBlog/simstring_rs/commit/d53e85b51360264cce0bc3f9634a48204315ac3f))
-
-
-
-## [0.3.1-rc.2] - 2025-07-26
-
-
-### Bug Fixes
-
-- (**ci**) Added missing write permission in the github release job ([e98b802](https://github.com/PyDataBlog/simstring_rs/commit/e98b8021403add8a6427526f66a3d1441c4192f7))
-
-
-### Documentation
-
-- (**benchmarks**) Update benchmark results ([74e435e](https://github.com/PyDataBlog/simstring_rs/commit/74e435e322bd65f001885746fd12581b0cca2bd1))
-
-
-
-## [0.3.1-rc.1] - 2025-07-26
-
-
-### Documentation
-
-- (**benchmarks**) Update benchmark results ([7c3a453](https://github.com/PyDataBlog/simstring_rs/commit/7c3a4539282e70afc64fe63a395607afb3ec1f47))
-
-
-### Miscellaneous Tasks
-
-- (**ci**) Added missing hrefs in changelogs & added specs to benchmarks [#37](https://github.com/PyDataBlog/simstring_rs/issues/37) ([b4357e0](https://github.com/PyDataBlog/simstring_rs/commit/b4357e0ef5af512bdef6b458047c03a50f4e2a66))
-
-
-
-## [0.3.1-beta.3] - 2025-07-18
-
-
-### Bug Fixes
-
-- (**ci**) Attempt to fix broken auto commit of benchmark results on a tagged release [#32](https://github.com/PyDataBlog/simstring_rs/issues/32) ([71d5a5e](https://github.com/PyDataBlog/simstring_rs/commit/71d5a5e9646a7881a02e50473efaf273e324deb6))
-
-
-
-## [0.3.1-beta.2] - 2025-07-17
-
-
-### Bug Fixes
-
-- (**ci**) Remove old wheels from current jobs [#28](https://github.com/PyDataBlog/simstring_rs/issues/28) ([0507233](https://github.com/PyDataBlog/simstring_rs/commit/0507233320db06f57466c5c9602769fe9789bb15))
-
-- (**ci**) Maturin can't publish generated bindings as it can't find the correct path [#29](https://github.com/PyDataBlog/simstring_rs/issues/29) ([2579a2b](https://github.com/PyDataBlog/simstring_rs/commit/2579a2b77df54e107741e6dae522541772520339))
-
-- (**ci**) Moved repo urls for maturin to env vars [#30](https://github.com/PyDataBlog/simstring_rs/issues/30) ([d81deef](https://github.com/PyDataBlog/simstring_rs/commit/d81deeffc42cdfebd54b8e87df7274ceb8175791))
-
-- (**ci**) Added missing dist file path for python wheels [#31](https://github.com/PyDataBlog/simstring_rs/issues/31) ([74f259a](https://github.com/PyDataBlog/simstring_rs/commit/74f259a5b3a5a64161c3e1bff2f9b6850235e409))
-
-
-### Documentation
-
-- (**benchmarks**) Update benchmark results ([f34d96f](https://github.com/PyDataBlog/simstring_rs/commit/f34d96f33a807d6cd92b1b3dab17f8006db9bdc9))
-
-- (**benchmarks**) Update benchmark results ([0766907](https://github.com/PyDataBlog/simstring_rs/commit/07669076026eb8f26973999fdb5b8af3829ee4ee))
-
-- (**benchmarks**) Update benchmark results ([1129c90](https://github.com/PyDataBlog/simstring_rs/commit/1129c9080853e4aeeb4bd62e044f280437370b52))
-
-
-### Features
-
-- (**ci**) Added pypi and test pypi publishing jobs [#24](https://github.com/PyDataBlog/simstring_rs/issues/24) ([b59cbc6](https://github.com/PyDataBlog/simstring_rs/commit/b59cbc6ca54cf43954142dab85d5597e1a1fc0ba))
-
-
-
-## [0.3.1-alpha.1] - 2025-07-14
-
-
-### Bug Fixes
-
-- (**release**) Get rid of git-cliff as a dev dependencies [#26](https://github.com/PyDataBlog/simstring_rs/issues/26) ([0af2a25](https://github.com/PyDataBlog/simstring_rs/commit/0af2a25d4a14d812927bc0414442be403ff4a3bd))
-
-- (**release**) Fixed hyperlink bug in git-cliff config [#27](https://github.com/PyDataBlog/simstring_rs/issues/27) ([6564d87](https://github.com/PyDataBlog/simstring_rs/commit/6564d8770715ecd6d0d82d4acdd4344ed30b3170))
-
-
-### Documentation
-
-- (**benchmarks**) Update benchmark results ([f08bd21](https://github.com/PyDataBlog/simstring_rs/commit/f08bd2143df00eb2db7e50aa85e446113780f1ea))
-
-- (**benchmarks**) Update benchmark results ([4f62c62](https://github.com/PyDataBlog/simstring_rs/commit/4f62c621f961b1bcb5ce0a8a7becb9db20b55671))
-
-- (**benchmarks**) Update benchmark results ([b77b264](https://github.com/PyDataBlog/simstring_rs/commit/b77b264a5eea0fa97cb6c47565d43cdab77340b7))
-
-- (**benchmarks**) Update benchmark results ([d99bdcb](https://github.com/PyDataBlog/simstring_rs/commit/d99bdcb291bb006f270d476f0c2ab34bcc252816))
-
-
-### Features
-
-- (**release**) Initial exploration of an automated release management system [#25](https://github.com/PyDataBlog/simstring_rs/issues/25) ([7c28e01](https://github.com/PyDataBlog/simstring_rs/commit/7c28e0141b2208d9c695fab2fbc0f3a76b547892))
-
-
-
-## [0.3.0] - 2025-07-04
-
-
-### Features
-
-- (**python**) Add python bindings to the project [#21](https://github.com/PyDataBlog/simstring_rs/issues/21) ([b206537](https://github.com/PyDataBlog/simstring_rs/commit/b2065379f1700ad480a123bd6fc4ea4d1c0ae6df))
-
-
-
-## [0.2.0] - 2025-06-30
-
-
-### Refactor
-
-- (**api**) Optimize data structures to avoid unnecessary allocations and enable parallel searches [#18](https://github.com/PyDataBlog/simstring_rs/issues/18) ([f10972f](https://github.com/PyDataBlog/simstring_rs/commit/f10972fd76a944384757f4283c61d804436cf83b))
-
-
-
-## [0.1.3] - 2025-06-29
-
-
-### Features
-
-- PR and Issues template [#17](https://github.com/PyDataBlog/simstring_rs/issues/17) ([77c74fc](https://github.com/PyDataBlog/simstring_rs/commit/77c74fc6156377e254f838a0ac475a896f85c210))
-
-
-
-## [0.1.2] - 2025-01-07
-
-
-### Feat
-
-- Initial  benchmark suite [#11](https://github.com/PyDataBlog/simstring_rs/issues/11) ([f14274a](https://github.com/PyDataBlog/simstring_rs/commit/f14274a99ad13d9c9a914cb195ca9c8833317987))
-
-
-### Release
-
-- Initial benchmarks compared to other implementations in other languages [#13](https://github.com/PyDataBlog/simstring_rs/issues/13) ([9fca265](https://github.com/PyDataBlog/simstring_rs/commit/9fca26563cbba35bd65215b6d2482bf932150866))
-
-
-
-## [0.1.1] - 2024-12-15
-
-
-### WIP
-
-- Initial proposed search method for hashdb [#7](https://github.com/PyDataBlog/simstring_rs/issues/7) ([19b6068](https://github.com/PyDataBlog/simstring_rs/commit/19b6068d2272af4d84ff4aad2da8f1c29827906d))
-
-
-
-## [0.1.0] - 2024-12-06
-
-
-### Fix
-
-- Added tag trigger to CI workflow [#2](https://github.com/PyDataBlog/simstring_rs/issues/2) ([386c0f1](https://github.com/PyDataBlog/simstring_rs/commit/386c0f1b2bd153eafadb0fa64e590ae56cac1bbd))
-
-- Keywords not exceeding 5 items [#3](https://github.com/PyDataBlog/simstring_rs/issues/3) ([3a57b84](https://github.com/PyDataBlog/simstring_rs/commit/3a57b840c15b66da4813f3d18a8b8ca8d57f9bd3))
-
-
-### Init
-
-- Initial commit ([32d6a3b](https://github.com/PyDataBlog/simstring_rs/commit/32d6a3b9ecb2775e03ce68279291647ca18689d2))
-
+### New Contributors
+* @PyDataBlog made their first contribution
 
 <!-- generated by git-cliff -->

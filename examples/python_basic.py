@@ -2,7 +2,7 @@ import time
 
 from simstring_rust.database import HashDb
 from simstring_rust.errors import SearchError
-from simstring_rust.extractors import CharacterNgrams
+from simstring_rust.extractors import CharacterNgrams, CustomExtractor
 from simstring_rust.measures import Cosine
 from simstring_rust.searcher import Searcher
 
@@ -17,6 +17,15 @@ def main():
 
     sample_embedding = extractor.apply("Some text")
     print(f"Sample embedding for 'Some text': {sample_embedding}")
+
+    class LowerBigrams:
+        def apply(self, text: str):
+            tokens = text.lower().split()
+            return [f"{left}|{right}" for left, right in zip(tokens, tokens[1:])]
+
+    custom_extractor = CustomExtractor(LowerBigrams())
+    custom_embedding = custom_extractor.apply("Some Custom Text")
+    print(f"Custom extractor embedding: {custom_embedding}")
 
     # Choose a similarity measure.
     # Options: Cosine(), Dice(), Jaccard(), Overlap(), ExactMatch()

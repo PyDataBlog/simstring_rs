@@ -7,7 +7,7 @@ use std::fmt::Write;
 
 /// Takes a list of features and makes each one unique by appending its occurrence count,
 /// then interns the result and returns them sorted.
-fn append_feature_counts(interner: &mut Rodeo, features: Vec<String>) -> Vec<Spur> {
+pub(crate) fn append_feature_counts(interner: &mut Rodeo, features: Vec<String>) -> Vec<Spur> {
     let mut counter: FxHashMap<String, usize> = FxHashMap::default();
     let mut unique_features = Vec::with_capacity(features.len());
 

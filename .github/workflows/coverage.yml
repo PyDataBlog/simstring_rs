@@ -55,15 +55,14 @@ jobs:
           source .venv/bin/activate
           uv pip install maturin pytest coverage
           rm -rf target/wheels
-          # Build in debug mode for coverage mapping
-          maturin build
-          uv pip install target/wheels/*.whl
+          # Build and install in editable mode for coverage mapping
+          maturin develop
           coverage run -m pytest tests/python/ -vv
           coverage xml -o coverage/python-coverage.xml
 
           # Generate the coverage report
-          grcov . --binary-path ./target/debug/ -s . -t lcov --branch --ignore-not-existing --ignore "tests/*" --ignore "examples/*" --ignore "build.rs" --ignore "src/lib.rs" -o ./coverage.lcov
-          grcov . --binary-path ./target/debug/ -s . -t cobertura --branch --ignore-not-existing --ignore "tests/*" --ignore "examples/*" --ignore "build.rs" --ignore "src/lib.rs" -o ./coverage/cobertura.xml
+          grcov . --binary-path ./target/debug/ -s . -t lcov --branch --ignore-not-existing --ignore "tests/*" --ignore "examples/*" --ignore "**/build.rs" --ignore "**/src/lib.rs" -o ./coverage.lcov
+          grcov . --binary-path ./target/debug/ -s . -t cobertura --branch --ignore-not-existing --ignore "tests/*" --ignore "examples/*" --ignore "**/build.rs" --ignore "**/src/lib.rs" -o ./coverage/cobertura.xml
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5

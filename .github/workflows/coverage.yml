@@ -57,7 +57,7 @@ jobs:
           rm -rf target/wheels
           # Build and install in editable mode for coverage mapping
           maturin develop
-          coverage run -m pytest tests/python/ -vv
+          coverage run --omit "tests/*" -m pytest tests/python/ -vv
           coverage xml -o coverage/python-coverage.xml
 
           # Generate the coverage report

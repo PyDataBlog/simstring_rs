@@ -125,3 +125,19 @@ class TestSimstringBindings:
         features_comma = extractor_comma.apply("foo,bar")
         expected_comma = ["# foo1", "foo bar1", "bar #1"]
         assert Counter(features_comma) == Counter(expected_comma)
+
+    def test_word_ngrams_in_db(self):
+        extractor = WordNgrams(n=2, splitter=" ", padder="#")
+        db = HashDb(extractor)
+        db.insert("foo bar")
+        searcher = Searcher(db, Cosine())
+        results = searcher.search("foo bar", 1.0)
+        assert results == ["foo bar"]
+
+    def test_invalid_extractor_in_db(self):
+        with pytest.raises(TypeError, match="Extractor must be CharacterNgrams, WordNgrams, or CustomExtractor"):
+            HashDb("not an extractor")
+
+    def test_ranked_search_error_on_invalid_threshold(self):
+        with pytest.raises(SearchError, match=r"Invalid threshold: 1\.1"):
+            self.searcher.ranked_search("test", 1.1)

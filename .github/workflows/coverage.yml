@@ -21,11 +21,6 @@ jobs:
             target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y software-properties-common python3-dev
-
       - name: Set up Python
         uses: actions/setup-python@v6
         with:

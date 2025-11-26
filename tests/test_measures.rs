@@ -1,8 +1,9 @@
-use lasso::Rodeo;
-use simstring_rust::{
-    CharacterNgrams, Cosine, Database, Dice, ExactMatch, HashDb, Jaccard, Measure, Overlap,
-};
-use std::sync::Arc;
+use lasso::{Rodeo, Spur};
+use rustc_hash::FxHashSet;
+use simstring_rust::database::{Database, HashDb, StringId};
+use simstring_rust::extractors::{CharacterNgrams, FeatureExtractor};
+use simstring_rust::measures::{Cosine, Dice, ExactMatch, Jaccard, Measure, Overlap};
+use std::sync::{Arc, Mutex};
 
 fn approx_eq(a: f64, b: f64) -> bool {
     (a - b).abs() < 1e-9
@@ -349,4 +350,103 @@ fn test_overlap_edge_cases() {
     assert_eq!(measure.similarity(&empty, &empty), 1.0);
     assert_eq!(measure.similarity(&x, &empty), 0.0);
     assert_eq!(measure.similarity(&empty, &x), 0.0);
+}
+
+#[test]
+fn test_cosine_zero_alpha_max_feature_size() {
+    let measure = Cosine;
+    let db = MockDatabase;
+    // When alpha is 0.0, max_feature_size should return db.max_feature_len()
+    assert_eq!(measure.max_feature_size(5, 0.0, &db), 100);
+}
+
+#[test]
+fn test_cosine_similarity_empty_inputs() {
+    let measure = Cosine;
+    let empty: &[Spur] = &[];
+    let non_empty = &[Spur::default()];
+
+    assert_eq!(measure.similarity(empty, empty), 0.0);
+    assert_eq!(measure.similarity(empty, non_empty), 0.0);
+    assert_eq!(measure.similarity(non_empty, empty), 0.0);
+}
+
+#[test]
+fn test_dice_zero_alpha_max_feature_size() {
+    let measure = Dice;
+    let db = MockDatabase;
+    assert_eq!(measure.max_feature_size(5, 0.0, &db), 100);
+}
+
+#[test]
+fn test_dice_similarity_empty_inputs() {
+    let measure = Dice;
+    let empty: &[Spur] = &[];
+    let non_empty = &[Spur::default()];
+
+    // Dice: if both empty -> 1.0
+    assert_eq!(measure.similarity(empty, empty), 1.0);
+    // If one empty -> 0.0
+    assert_eq!(measure.similarity(empty, non_empty), 0.0);
+    assert_eq!(measure.similarity(non_empty, empty), 0.0);
+}
+
+#[test]
+fn test_jaccard_negative_alpha_min_common_features() {
+    let measure = Jaccard;
+    // alpha = -1.0 returns 0
+    assert_eq!(measure.minimum_common_feature_count(5, 5, -1.0), 0);
+}
+
+#[test]
+fn test_jaccard_similarity_empty_inputs() {
+    let measure = Jaccard;
+    let empty: &[Spur] = &[];
+    let non_empty = &[Spur::default()];
+
+    // Jaccard: if both empty -> 1.0
+    assert_eq!(measure.similarity(empty, empty), 1.0);
+    // If one empty -> 0.0
+    assert_eq!(measure.similarity(empty, non_empty), 0.0);
+    assert_eq!(measure.similarity(non_empty, empty), 0.0);
+}
+
+#[test]
+fn test_overlap_similarity_empty_inputs() {
+    let measure = Overlap;
+    let empty: &[Spur] = &[];
+    let non_empty = &[Spur::default()];
+
+    // Overlap: if both empty -> 1.0
+    assert_eq!(measure.similarity(empty, empty), 1.0);
+    // If one empty -> 0.0
+    assert_eq!(measure.similarity(empty, non_empty), 0.0);
+    assert_eq!(measure.similarity(non_empty, empty), 0.0);
+}
+
+struct MockDatabase;
+impl Database for MockDatabase {
+    fn insert(&mut self, _text: String) {}
+    fn clear(&mut self) {}
+    fn lookup_strings(&self, _size: usize, _feature: Spur) -> Option<&FxHashSet<StringId>> {
+        None
+    }
+    fn get_string(&self, _id: StringId) -> Option<&str> {
+        None
+    }
+    fn get_features(&self, _id: StringId) -> Option<&Vec<Spur>> {
+        None
+    }
+    fn feature_extractor(&self) -> &dyn FeatureExtractor {
+        unimplemented!()
+    }
+    fn max_feature_len(&self) -> usize {
+        100
+    }
+    fn interner(&self) -> Arc<Mutex<Rodeo>> {
+        unimplemented!()
+    }
+    fn total_strings(&self) -> usize {
+        0
+    }
 }

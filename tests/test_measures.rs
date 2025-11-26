@@ -276,3 +276,77 @@ mod overlap_tests {
         assert_eq!(measure.minimum_common_feature_count(query_size, 5, 0.5), 3);
     }
 }
+
+// --- Edge Case Tests ---
+
+fn create_dummy_db() -> HashDb {
+    let feature_extractor = Arc::new(CharacterNgrams::new(2, "$"));
+    HashDb::new(feature_extractor)
+}
+
+#[test]
+fn test_cosine_edge_cases() {
+    let measure = Cosine;
+    let mut interner = Rodeo::default();
+    let x = vec![interner.get_or_intern("a")];
+    let empty = vec![];
+
+    // Similarity: Empty inputs
+    assert_eq!(measure.similarity(&empty, &empty), 0.0);
+    assert_eq!(measure.similarity(&x, &empty), 0.0);
+    assert_eq!(measure.similarity(&empty, &x), 0.0);
+
+    // max_feature_size: alpha = 0.0
+    let db = create_dummy_db();
+    // Should return db.max_feature_len() (which is 0 for empty db)
+    assert_eq!(measure.max_feature_size(5, 0.0, &db), 0);
+}
+
+#[test]
+fn test_dice_edge_cases() {
+    let measure = Dice;
+    let mut interner = Rodeo::default();
+    let x = vec![interner.get_or_intern("a")];
+    let empty = vec![];
+
+    // Similarity: Empty inputs
+    assert_eq!(measure.similarity(&empty, &empty), 1.0);
+    assert_eq!(measure.similarity(&x, &empty), 0.0);
+    assert_eq!(measure.similarity(&empty, &x), 0.0);
+
+    // min_feature_size: alpha > 2.0
+    assert_eq!(measure.min_feature_size(5, 2.1), 0);
+
+    // max_feature_size: alpha = 0.0
+    let db = create_dummy_db();
+    assert_eq!(measure.max_feature_size(5, 0.0, &db), 0);
+}
+
+#[test]
+fn test_jaccard_edge_cases() {
+    let measure = Jaccard;
+    let mut interner = Rodeo::default();
+    let x = vec![interner.get_or_intern("a")];
+    let empty = vec![];
+
+    // Similarity: Empty inputs
+    assert_eq!(measure.similarity(&empty, &empty), 1.0);
+    assert_eq!(measure.similarity(&x, &empty), 0.0);
+    assert_eq!(measure.similarity(&empty, &x), 0.0);
+
+    // minimum_common_feature_count: alpha = -1.0
+    assert_eq!(measure.minimum_common_feature_count(5, 5, -1.0), 0);
+}
+
+#[test]
+fn test_overlap_edge_cases() {
+    let measure = Overlap;
+    let mut interner = Rodeo::default();
+    let x = vec![interner.get_or_intern("a")];
+    let empty = vec![];
+
+    // Similarity: Empty inputs
+    assert_eq!(measure.similarity(&empty, &empty), 1.0);
+    assert_eq!(measure.similarity(&x, &empty), 0.0);
+    assert_eq!(measure.similarity(&empty, &x), 0.0);
+}

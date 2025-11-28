@@ -24,17 +24,24 @@ fn test_cosine_search_basic() {
     let searcher = Searcher::new(&db, measure);
     let results = searcher.ranked_search("foo", 0.8).unwrap();
 
-    assert_eq!(results.len(), 2, "Expected 2 results");
-    assert_eq!(results[0].0, "foo", "First result should be 'foo'");
+    assert_eq!(
+        results.len(),
+        2,
+        "Cosine search for 'foo' with alpha=0.8 should return 2 results"
+    );
+    assert_eq!(
+        results[0].0, "foo",
+        "First result should be exact match 'foo'"
+    );
     assert!(
         approx_eq(results[0].1, 1.0),
-        "Score for 'foo' should be 1.0, got {}",
+        "Cosine score for exact match 'foo' should be 1.0, got {}",
         results[0].1
     );
     assert_eq!(results[1].0, "fooo", "Second result should be 'fooo'");
     assert!(
         approx_eq(results[1].1, 0.8944271909999159),
-        "Score for 'fooo' should be ~0.8944, got {}",
+        "Cosine score for 'fooo' should be ~0.8944, got {}",
         results[1].1
     );
 }
@@ -52,17 +59,24 @@ fn test_dice_search_basic() {
     let searcher = Searcher::new(&db, measure);
     let results = searcher.ranked_search("foo", 0.8).unwrap();
 
-    assert_eq!(results.len(), 2, "Expected 2 results");
-    assert_eq!(results[0].0, "foo", "First result should be 'foo'");
+    assert_eq!(
+        results.len(),
+        2,
+        "Dice search for 'foo' with alpha=0.8 should return 2 results"
+    );
+    assert_eq!(
+        results[0].0, "foo",
+        "First result should be exact match 'foo'"
+    );
     assert!(
         approx_eq(results[0].1, 1.0),
-        "Score for 'foo' should be 1.0, got {}",
+        "Dice score for exact match 'foo' should be 1.0, got {}",
         results[0].1
     );
     assert_eq!(results[1].0, "fooo", "Second result should be 'fooo'");
     assert!(
         approx_eq(results[1].1, 0.8888888888888888),
-        "Score for 'fooo' should be ~0.8889, got {}",
+        "Dice score for 'fooo' should be ~0.8889, got {}",
         results[1].1
     );
 }
@@ -80,17 +94,24 @@ fn test_jaccard_search_basic() {
     let searcher = Searcher::new(&db, measure);
     let results = searcher.ranked_search("foo", 0.8).unwrap();
 
-    assert_eq!(results.len(), 2, "Expected 2 results");
-    assert_eq!(results[0].0, "foo", "First result should be 'foo'");
+    assert_eq!(
+        results.len(),
+        2,
+        "Jaccard search for 'foo' with alpha=0.8 should return 2 results"
+    );
+    assert_eq!(
+        results[0].0, "foo",
+        "First result should be exact match 'foo'"
+    );
     assert!(
         approx_eq(results[0].1, 1.0),
-        "Score for 'foo' should be 1.0, got {}",
+        "Jaccard score for exact match 'foo' should be 1.0, got {}",
         results[0].1
     );
     assert_eq!(results[1].0, "fooo", "Second result should be 'fooo'");
     assert!(
         approx_eq(results[1].1, 0.8),
-        "Score for 'fooo' should be 0.8, got {}",
+        "Jaccard score for 'fooo' should be 0.8, got {}",
         results[1].1
     );
 }
@@ -108,11 +129,26 @@ fn test_overlap_search_basic() {
     let searcher = Searcher::new(&db, measure);
     let results = searcher.ranked_search("foo", 0.8).unwrap();
 
-    assert_eq!(results.len(), 2, "Expected 2 results");
-    assert_eq!(results[0].0, "foo");
-    assert!(approx_eq(results[0].1, 1.0));
-    assert_eq!(results[1].0, "fooo");
-    assert!(approx_eq(results[1].1, 1.0));
+    assert_eq!(
+        results.len(),
+        2,
+        "Overlap search for 'foo' with alpha=0.8 should return 2 results"
+    );
+    assert_eq!(
+        results[0].0, "foo",
+        "First result should be exact match 'foo'"
+    );
+    assert!(
+        approx_eq(results[0].1, 1.0),
+        "Overlap score for exact match 'foo' should be 1.0, got {}",
+        results[0].1
+    );
+    assert_eq!(results[1].0, "fooo", "Second result should be 'fooo'");
+    assert!(
+        approx_eq(results[1].1, 1.0),
+        "Overlap score for 'fooo' should be 1.0 (all query features present), got {}",
+        results[1].1
+    );
 }
 
 #[test]
@@ -133,18 +169,24 @@ fn test_exact_match_search_basic() {
         assert_eq!(
             results.len(),
             1,
-            "Expected 1 result for threshold {threshold}"
+            "ExactMatch search for 'foo' with alpha={threshold} should return exactly 1 result"
         );
-        assert_eq!(results[0].0, "foo", "Result should be 'foo'");
+        assert_eq!(
+            results[0].0, "foo",
+            "ExactMatch result should be 'foo' for threshold {threshold}"
+        );
         assert!(
             approx_eq(results[0].1, 1.0),
-            "Score for 'foo' should be 1.0, got {}",
+            "ExactMatch score should be 1.0 for threshold {threshold}, got {}",
             results[0].1
         );
     }
 
     let results_none = searcher.ranked_search("baz", 0.5).unwrap();
-    assert!(results_none.is_empty(), "Expected no results for 'baz'");
+    assert!(
+        results_none.is_empty(),
+        "ExactMatch search for 'baz' (not in database) should return no results"
+    );
 }
 
 #[test]
@@ -156,9 +198,16 @@ fn test_search_with_different_endmarkers_cosine() {
     db_dollar.insert("test".to_string());
     let searcher_dollar = Searcher::new(&db_dollar, measure);
     let results_dollar = searcher_dollar.ranked_search("test", 0.8).unwrap();
-    assert_eq!(results_dollar.len(), 1, "Using '$' endmarker");
+    assert_eq!(
+        results_dollar.len(),
+        1,
+        "Search with '$' endmarker should find 'test'"
+    );
     if !results_dollar.is_empty() {
-        assert!(approx_eq(results_dollar[0].1, 1.0));
+        assert!(
+            approx_eq(results_dollar[0].1, 1.0),
+            "Exact match score with '$' endmarker should be 1.0"
+        );
     }
 
     let fe_hash = Arc::new(CharacterNgrams::new(2, "#"));
@@ -166,9 +215,16 @@ fn test_search_with_different_endmarkers_cosine() {
     db_hash.insert("test".to_string());
     let searcher_hash = Searcher::new(&db_hash, measure);
     let results_hash = searcher_hash.ranked_search("test", 0.8).unwrap();
-    assert_eq!(results_hash.len(), 1, "Using '#' endmarker");
+    assert_eq!(
+        results_hash.len(),
+        1,
+        "Search with '#' endmarker should find 'test'"
+    );
     if !results_hash.is_empty() {
-        assert!(approx_eq(results_hash[0].1, 1.0));
+        assert!(
+            approx_eq(results_hash[0].1, 1.0),
+            "Exact match score with '#' endmarker should be 1.0"
+        );
     }
 }
 
@@ -182,9 +238,12 @@ fn test_search_with_different_ngram_sizes_cosine() {
     db_2.insert("test".to_string());
     let searcher_2 = Searcher::new(&db_2, measure);
     let results_2 = searcher_2.ranked_search("test", 0.8).unwrap();
-    assert_eq!(results_2.len(), 1, "Using n=2 ngrams");
+    assert_eq!(results_2.len(), 1, "Search with 2-grams should find 'test'");
     if !results_2.is_empty() {
-        assert!(approx_eq(results_2[0].1, 1.0));
+        assert!(
+            approx_eq(results_2[0].1, 1.0),
+            "Exact match score with 2-grams should be 1.0"
+        );
     }
 
     let fe_3 = Arc::new(CharacterNgrams::new(3, endmarker));
@@ -192,9 +251,12 @@ fn test_search_with_different_ngram_sizes_cosine() {
     db_3.insert("test".to_string());
     let searcher_3 = Searcher::new(&db_3, measure);
     let results_3 = searcher_3.ranked_search("test", 0.8).unwrap();
-    assert_eq!(results_3.len(), 1, "Using n=3 ngrams");
+    assert_eq!(results_3.len(), 1, "Search with 3-grams should find 'test'");
     if !results_3.is_empty() {
-        assert!(approx_eq(results_3[0].1, 1.0));
+        assert!(
+            approx_eq(results_3[0].1, 1.0),
+            "Exact match score with 3-grams should be 1.0"
+        );
     }
 }
 
@@ -211,11 +273,15 @@ fn test_cosine_with_repeated_ngrams_in_query() {
     let searcher = Searcher::new(&db, measure);
     let results = searcher.ranked_search(query, 0.5).unwrap();
 
-    assert_eq!(results.len(), 1, "Expected 1 result for 'aaaa' vs 'aaab'");
-    assert_eq!(results[0].0, "aaab");
+    assert_eq!(
+        results.len(),
+        1,
+        "Cosine search for 'aaaa' with alpha=0.5 should find 'aaab' (repeated n-grams)"
+    );
+    assert_eq!(results[0].0, "aaab", "Result should be 'aaab'");
     assert!(
         approx_eq(results[0].1, 0.6),
-        "Score for 'aaab' should be 0.6, got {}",
+        "Cosine score for 'aaab' with repeated n-grams should be 0.6, got {}",
         results[0].1
     );
 }
@@ -226,7 +292,6 @@ fn test_unranked_search() {
     let measure = Cosine;
     let mut db = HashDb::new(feature_extractor);
 
-    // Non-alphabetical order to test the sorting
     db.insert("fooo".to_string());
     db.insert("bar".to_string());
     db.insert("foo".to_string());
@@ -234,28 +299,37 @@ fn test_unranked_search() {
     let searcher = Searcher::new(&db, measure);
 
     let results = searcher.search("foo", 0.8).unwrap();
-    /*
-    The unranked search should still find the same candidates as ranked_search,
-    but without scores and sorted alphabetically.
-    */
-    assert_eq!(results, vec!["foo", "fooo"]);
+    assert_eq!(
+        results,
+        vec!["foo", "fooo"],
+        "Unranked search should return results in alphabetical order without scores"
+    );
 
     let results_exact = searcher.search("bar", 1.0).unwrap();
-    assert_eq!(results_exact, vec!["bar"]);
+    assert_eq!(
+        results_exact,
+        vec!["bar"],
+        "Unranked search with alpha=1.0 should return exact match only"
+    );
 
     let results_none = searcher.search("xyz", 0.9).unwrap();
-    assert!(results_none.is_empty());
+    assert!(
+        results_none.is_empty(),
+        "Unranked search for non-existent string should return empty results"
+    );
 
     let result_err = searcher.search("foo", -0.5);
-    assert!(result_err.is_err());
-    assert_eq!(result_err.unwrap_err(), SearchError::InvalidThreshold(-0.5));
+    assert!(
+        result_err.is_err(),
+        "Search with negative alpha should return error"
+    );
+    assert_eq!(
+        result_err.unwrap_err(),
+        SearchError::InvalidThreshold(-0.5),
+        "Error should be InvalidThreshold with alpha=-0.5"
+    );
 }
 
-
-/*
-MockDatabase is a wrapper around HashDb that implements the Database trait.
-It is used to test the Searcher with a database that returns None for get_string/get_features.  
-*/
 struct MockDatabase {
     real_db: HashDb,
 }
@@ -283,12 +357,10 @@ impl Database for MockDatabase {
     }
 
     fn get_string(&self, _id: StringId) -> Option<&str> {
-        // Return None to simulate a missing string, triggering the else branch in ranked_search
         None
     }
 
     fn get_features(&self, _id: StringId) -> Option<&Vec<Spur>> {
-        // Return None to simulate missing features
         None
     }
 
@@ -315,22 +387,22 @@ fn test_empty_string_insertion_and_search() {
     let measure = Cosine;
     let mut db = HashDb::new(feature_extractor);
 
-    // Insert empty string
     db.insert("".to_string());
     db.insert("foo".to_string());
 
     let searcher = Searcher::new(&db, measure);
 
-    // Search for empty string
     let results = searcher.search("", 1.0).unwrap();
-    assert!(results.contains(&""), "Results should contain empty string");
+    assert!(
+        results.contains(&""),
+        "Search for empty string should find empty string in database"
+    );
 
-    // Search for something else, empty string should not be returned unless it matches
     let results_foo = searcher.search("foo", 1.0).unwrap();
     assert_eq!(
         results_foo,
         vec!["foo"],
-        "Search for 'foo' should return exactly ['foo']"
+        "Search for 'foo' with alpha=1.0 should return only 'foo', not empty string"
     );
 }
 
@@ -350,26 +422,24 @@ fn test_unicode_handling() {
 
     let searcher = Searcher::new(&db, measure);
 
-    // Exact match search
     let results_emoji = searcher.search("🦀🚀", 1.0).unwrap();
     assert_eq!(
         results_emoji,
         vec![emoji_str],
-        "Search for emoji should return exact match"
+        "Search should handle emoji characters correctly and return exact match"
     );
 
     let results_cjk = searcher.search("你好世界", 1.0).unwrap();
     assert_eq!(
         results_cjk,
         vec![cjk_str],
-        "Search for CJK should return exact match"
+        "Search should handle CJK characters correctly and return exact match"
     );
 
-    // Partial match
     let results_mixed = searcher.search("hello 🌍", 0.5).unwrap();
     assert!(
         results_mixed.contains(&mixed_str),
-        "Partial match should find the mixed string"
+        "Partial search should find mixed ASCII/Unicode string"
     );
 }
 
@@ -383,12 +453,11 @@ fn test_ngram_size_larger_than_string() {
 
     let searcher = Searcher::new(&db, measure);
 
-    // Should still be able to find it with exact match
     let results = searcher.search("hi", 1.0).unwrap();
     assert_eq!(
         results,
         vec!["hi"],
-        "Should find 'hi' even if n-gram size is larger than string"
+        "Search should work even when n-gram size (5) is larger than string length (2)"
     );
 }
 
@@ -401,30 +470,26 @@ fn test_threshold_boundaries() {
     db.insert("foo".to_string());
     let searcher = Searcher::new(&db, measure);
 
-    // Threshold 1.0 (Exact match)
     let results_1 = searcher.search("foo", 1.0).unwrap();
     assert_eq!(
         results_1,
         vec!["foo"],
-        "Threshold 1.0 should return exact match"
+        "Threshold 1.0 should return exact match only"
     );
 
-    // Threshold 0.0 (Invalid)
     let err_0 = searcher.search("foo", 0.0);
     assert!(
         matches!(err_0, Err(SearchError::InvalidThreshold(0.0))),
-        "Threshold 0.0 should be invalid"
+        "Threshold 0.0 (inclusive lower bound) should be invalid"
     );
 
-    // Threshold slightly above 0.0
     let results_small = searcher.search("foo", 0.0001).unwrap();
     assert_eq!(
         results_small,
         vec!["foo"],
-        "Threshold slightly above 0.0 should return results"
+        "Threshold slightly above 0.0 should be valid and return results"
     );
 
-    // Threshold > 1.0 (Invalid)
     let err_large = searcher.search("foo", 1.1);
     assert!(
         matches!(err_large, Err(SearchError::InvalidThreshold(1.1))),
@@ -444,7 +509,7 @@ fn test_no_results() {
     let results = searcher.search("bar", 0.9).unwrap();
     assert!(
         results.is_empty(),
-        "Search for non-existent term should return empty results"
+        "Search for string with no similar matches should return empty results"
     );
 }
 
@@ -462,9 +527,12 @@ fn test_search_tau_equals_one_optimization() {
     let results = searcher.search("far", 0.1).unwrap();
     assert!(
         results.contains(&"foo"),
-        "Results should contain 'foo' due to tau=1 optimization"
+        "Overlap search with low alpha should find 'foo' (tau=1 optimization triggers)"
     );
-    assert!(results.contains(&"far"), "Results should contain 'far'");
+    assert!(
+        results.contains(&"far"),
+        "Overlap search should find exact match 'far'"
+    );
 }
 
 #[test]
@@ -476,23 +544,22 @@ fn test_ranked_search_none_handling() {
     let results = searcher.ranked_search("foo", 0.1).unwrap();
     assert!(
         results.is_empty(),
-        "Ranked search should filter out None results from DB"
+        "Ranked search should filter out candidates when get_string/get_features return None"
     );
 }
 
 #[test]
 fn test_search_candidates_empty_query() {
-    let feature_extractor = Arc::new(CharacterNgrams::new(100, "")); // No markers, large n
+    let feature_extractor = Arc::new(CharacterNgrams::new(100, ""));
     let measure = Overlap;
     let mut db = HashDb::new(feature_extractor);
     db.insert("foo".to_string());
 
     let searcher = Searcher::new(&db, measure);
 
-    // "foo" -> len 3. n=100. features empty.
     let results = searcher.search("foo", 0.5).unwrap();
     assert!(
         results.is_empty(),
-        "Search with empty query features should return empty results"
+        "Search with empty query features (n-gram size too large) should return empty results"
     );
 }

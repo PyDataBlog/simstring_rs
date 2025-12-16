@@ -39,7 +39,7 @@ impl FeatureExtractor for WordNgrams {
 
         // Padded tokens iterator
         let padded_tokens: Vec<&str> = std::iter::once(self.padder.as_str())
-            .chain(tokens.into_iter())
+            .chain(tokens)
             .chain(std::iter::once(self.padder.as_str()))
             .collect();
 

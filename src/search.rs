@@ -105,7 +105,7 @@ impl<'db, M: Measure> Searcher<'db, M> {
         let max_feat_size = self.measure.max_feature_size(query_size, alpha, self.db);
         let range_size = max_feat_size.saturating_sub(min_feat_size) + 1;
 
-        // For small ranges, sequential is faster than Rayon's thread pool overhead
+        // For small ranges, sequential is faster
         if range_size <= 4 {
             let mut all_candidates: Vec<StringId> = Vec::new();
             for candidate_size in min_feat_size..=max_feat_size {
@@ -125,7 +125,7 @@ impl<'db, M: Measure> Searcher<'db, M> {
             return all_candidates.into_iter().collect();
         }
 
-        // For larger ranges, use parallel iteration but collect into Vec first
+        // For larger ranges, parallel iteration
         let all_candidates: Vec<StringId> = (min_feat_size..=max_feat_size)
             .into_par_iter()
             .flat_map(|candidate_size| {

@@ -1,5 +1,7 @@
 use crate::FeatureExtractor;
 use lasso::{Rodeo, Spur};
+use rustc_hash::FxHashMap;
+use std::fmt::Write;
 
 #[derive(Clone)]
 pub struct WordNgrams {
@@ -30,25 +32,42 @@ impl FeatureExtractor for WordNgrams {
             return vec![];
         }
 
-        let tokens = text.split(&self.splitter).filter(|s| !s.is_empty());
+        let tokens: Vec<&str> = text
+            .split(&self.splitter)
+            .filter(|s| !s.is_empty())
+            .collect();
 
-        // an iterator that includes padding
-        let padded_tokens_iter = std::iter::once(self.padder.as_str())
-            .chain(tokens)
-            .chain(std::iter::once(self.padder.as_str()));
+        // Padded tokens iterator
+        let padded_tokens: Vec<&str> = std::iter::once(self.padder.as_str())
+            .chain(tokens.into_iter())
+            .chain(std::iter::once(self.padder.as_str()))
+            .collect();
 
-        // Use a buffer to collect tokens for each n-gram
-        let mut buffer: Vec<&str> = Vec::with_capacity(self.n);
-        let mut ngrams = Vec::new();
-
-        for token in padded_tokens_iter {
-            buffer.push(token);
-            if buffer.len() == self.n {
-                ngrams.push(buffer.join(" "));
-                buffer.remove(0);
-            }
+        if padded_tokens.len() < self.n {
+            return vec![];
         }
 
-        super::append_feature_counts(interner, ngrams)
+        // Inline counting + interning in one pass
+        let mut counter: FxHashMap<String, usize> = FxHashMap::default();
+        let expected_ngrams = padded_tokens.len() - self.n + 1;
+        let mut result = Vec::with_capacity(expected_ngrams);
+        let mut counted_buffer = String::with_capacity(64);
+
+        for window in padded_tokens.windows(self.n) {
+            let ngram = window.join(" ");
+
+            // Count occurrence
+            let count = counter.entry(ngram.clone()).or_insert(0);
+            *count += 1;
+
+            // Build counted string and intern
+            counted_buffer.clear();
+            counted_buffer.push_str(&ngram);
+            write!(&mut counted_buffer, "{count}").unwrap();
+            result.push(interner.get_or_intern(&counted_buffer));
+        }
+
+        result.sort_unstable();
+        result
     }
 }

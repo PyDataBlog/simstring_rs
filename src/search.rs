@@ -103,26 +103,46 @@ impl<'db, M: Measure> Searcher<'db, M> {
 
         let min_feat_size = self.measure.min_feature_size(query_size, alpha);
         let max_feat_size = self.measure.max_feature_size(query_size, alpha, self.db);
+        let range_size = max_feat_size.saturating_sub(min_feat_size) + 1;
 
-        (min_feat_size..=max_feat_size)
-            .into_par_iter()
-            .map(|candidate_size| {
+        // For small ranges, sequential is faster than Rayon's thread pool overhead
+        if range_size <= 4 {
+            let mut all_candidates: Vec<StringId> = Vec::new();
+            for candidate_size in min_feat_size..=max_feat_size {
                 let tau =
                     self.measure
                         .minimum_common_feature_count(query_size, candidate_size, alpha);
 
                 if tau == 0 || tau > query_size {
-                    return FxHashSet::default();
+                    continue;
+                }
+
+                all_candidates.extend(self.overlap_join(query_features, tau, candidate_size));
+            }
+            // Deduplicate at the end (faster than HashSet for small collections)
+            all_candidates.sort_unstable();
+            all_candidates.dedup();
+            return all_candidates.into_iter().collect();
+        }
+
+        // For larger ranges, use parallel iteration but collect into Vec first
+        let all_candidates: Vec<StringId> = (min_feat_size..=max_feat_size)
+            .into_par_iter()
+            .flat_map(|candidate_size| {
+                let tau =
+                    self.measure
+                        .minimum_common_feature_count(query_size, candidate_size, alpha);
+
+                if tau == 0 || tau > query_size {
+                    return Vec::new();
                 }
 
                 self.overlap_join(query_features, tau, candidate_size)
-                    .into_iter()
-                    .collect::<FxHashSet<StringId>>()
             })
-            .reduce(FxHashSet::default, |mut acc, set| {
-                acc.extend(set);
-                acc
-            })
+            .collect();
+
+        // Deduplicate - HashSet is efficient for large collections
+        all_candidates.into_iter().collect()
     }
 
     fn overlap_join(
@@ -149,7 +169,15 @@ impl<'db, M: Measure> Searcher<'db, M> {
         let mut feature_indices: Vec<usize> = (0..query_features.len()).collect();
         feature_indices.sort_unstable_by_key(|&i| feature_sets[i].map_or(usize::MAX, |s| s.len()));
 
-        let mut candidate_counts: FxHashMap<StringId, usize> = FxHashMap::default();
+        // Pre-size HashMap based on smallest feature set to reduce rehashing
+        let estimated_candidates = feature_sets
+            .iter()
+            .filter_map(|s| s.as_ref())
+            .map(|s| s.len())
+            .min()
+            .unwrap_or(16);
+        let mut candidate_counts: FxHashMap<StringId, usize> =
+            FxHashMap::with_capacity_and_hasher(estimated_candidates, Default::default());
         let mut results = Vec::new();
         let q_len = query_features.len();
 

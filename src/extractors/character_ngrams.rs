@@ -1,5 +1,7 @@
 use crate::FeatureExtractor;
 use lasso::{Rodeo, Spur};
+use rustc_hash::FxHashMap;
+use std::fmt::Write;
 
 #[derive(Clone)]
 pub struct CharacterNgrams {
@@ -38,26 +40,39 @@ impl FeatureExtractor for CharacterNgrams {
         }
 
         let expected_ngrams = total_len - self.n + 1;
-        let mut ngrams = Vec::with_capacity(expected_ngrams);
-
         let padding = self.endmarker.repeat(padding_len);
 
-        // collect chars once, then slice
+        // Collect chars once, then slice
         let mut all_chars = Vec::with_capacity(total_len);
         all_chars.extend(padding.chars());
         all_chars.extend(text.chars());
         all_chars.extend(padding.chars());
 
-        // Generate n-grams using efficient windowing
+        // Inline counting + interning in one pass (no intermediate Vec<String>)
+        let mut counter: FxHashMap<String, usize> = FxHashMap::default();
+        let mut result = Vec::with_capacity(expected_ngrams);
+        let mut ngram_buffer = String::with_capacity(self.n * 4);
+        let mut counted_buffer = String::with_capacity(self.n * 4 + 8);
+
         for window in all_chars.windows(self.n) {
-            // Pre-allocate string with known capacity
-            let mut ngram = String::with_capacity(self.n * 4); // Assume max 4 bytes per char
+            // Build n-gram in reusable buffer
+            ngram_buffer.clear();
             for &ch in window {
-                ngram.push(ch);
+                ngram_buffer.push(ch);
             }
-            ngrams.push(ngram);
+
+            // Count occurrence
+            let count = counter.entry(ngram_buffer.clone()).or_insert(0);
+            *count += 1;
+
+            // Build counted string and intern
+            counted_buffer.clear();
+            counted_buffer.push_str(&ngram_buffer);
+            write!(&mut counted_buffer, "{count}").unwrap();
+            result.push(interner.get_or_intern(&counted_buffer));
         }
 
-        super::append_feature_counts(interner, ngrams)
+        result.sort_unstable();
+        result
     }
 }

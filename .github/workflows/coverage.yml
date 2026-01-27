@@ -21,11 +21,6 @@ jobs:
             target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y software-properties-common python3-dev
-
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
@@ -48,20 +43,21 @@ jobs:
           # Set the path for the raw coverage data
           export LLVM_PROFILE_FILE="target/coverage/simstring_rs-%p-%m.profraw"
           # Run all tests, including the ignored python bindings
-          cargo test --all-features -- --include-ignored
-          # Generate the coverage report
-          grcov . --binary-path ./target/debug/ -s . -t lcov --branch --ignore-not-existing --ignore "tests/*" --ignore "examples/*" --ignore "build.rs" --ignore "src/lib.rs" -o ./coverage.lcov
-          grcov . --binary-path ./target/debug/ -s . -t cobertura --branch --ignore-not-existing --ignore "tests/*" --ignore "examples/*" --ignore "build.rs" --ignore "src/lib.rs" -o ./coverage/cobertura.xml
+          cargo test --all-features
           # Generate Python coverage report
           pip install uv
           uv venv
           source .venv/bin/activate
           uv pip install maturin pytest coverage
           rm -rf target/wheels
-          maturin build --release
-          uv pip install target/wheels/*.whl
+          # Build and install in editable mode for coverage mapping
+          maturin develop
           coverage run -m pytest tests/python/ -vv
           coverage xml -o coverage/python-coverage.xml
+
+          # Generate the coverage report
+          grcov . --binary-path ./target/debug/ -s . -t lcov --branch --ignore-not-existing --ignore "tests/*" --ignore "examples/*" --ignore "**/build.rs" --ignore "**/src/lib.rs" -o ./coverage.lcov
+          grcov . --binary-path ./target/debug/ -s . -t cobertura --branch --ignore-not-existing --ignore "tests/*" --ignore "examples/*" --ignore "**/build.rs" --ignore "**/src/lib.rs" -o ./coverage/cobertura.xml
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5

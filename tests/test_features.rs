@@ -229,3 +229,30 @@ mod word_ngrams_tests {
         );
     }
 }
+
+#[test]
+fn test_character_ngrams_input_shorter_than_n() {
+    // The condition `total_len < self.n` is only reachable if `text_len + 2*(n-1) < n`.
+    // This simplifies to `text_len + n < 2`.
+    // This is only possible if n=1 and text_len=0.
+    // For any n >= 2, the padding ensures total_len >= n.
+
+    let extractor = CharacterNgrams::new(1, "$");
+    let mut interner = Rodeo::default();
+
+    // "" -> len 0. n=1. padding=0. total_len=0. 0 < 1.
+    let features = extractor.features("", &mut interner);
+    assert!(
+        features.is_empty(),
+        "Features should be empty when input length is shorter than n (and n=1)"
+    );
+}
+
+#[test]
+fn test_word_ngrams_n_zero() {
+    let extractor = WordNgrams::new(0, " ", "#");
+    let mut interner = Rodeo::default();
+
+    let features = extractor.features("hello world", &mut interner);
+    assert!(features.is_empty(), "Features should be empty when n=0");
+}

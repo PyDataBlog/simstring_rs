@@ -108,3 +108,36 @@ class TestSimstringBindings:
         results = searcher.search("foo", 0.8)
 
         assert results == ["foo"]
+
+    def test_word_ngram_edge_cases(self):
+        # Empty string
+        extractor = WordNgrams(n=2, splitter=" ", padder="#")
+        features = extractor.apply("")
+        # With n=2 and 1 padding on each side, we get ["# #"] -> ["# #1"]
+        assert features == ["# #1"]
+
+        # String with only separators
+        features_sep = extractor.apply("   ")
+        assert features_sep == ["# #1"]
+
+        # Different splitter
+        extractor_comma = WordNgrams(n=2, splitter=",", padder="#")
+        features_comma = extractor_comma.apply("foo,bar")
+        expected_comma = ["# foo1", "foo bar1", "bar #1"]
+        assert Counter(features_comma) == Counter(expected_comma)
+
+    def test_word_ngrams_in_db(self):
+        extractor = WordNgrams(n=2, splitter=" ", padder="#")
+        db = HashDb(extractor)
+        db.insert("foo bar")
+        searcher = Searcher(db, Cosine())
+        results = searcher.search("foo bar", 1.0)
+        assert results == ["foo bar"]
+
+    def test_invalid_extractor_in_db(self):
+        with pytest.raises(TypeError, match="Extractor must be CharacterNgrams, WordNgrams, or CustomExtractor"):
+            HashDb("not an extractor")
+
+    def test_ranked_search_error_on_invalid_threshold(self):
+        with pytest.raises(SearchError, match=r"Invalid threshold: 1\.1"):
+            self.searcher.ranked_search("test", 1.1)

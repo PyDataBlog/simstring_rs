@@ -4,7 +4,7 @@ import sys
 from simstring_rust.extractors import CustomExtractor
 from simstring_rust.database import HashDb
 
-def run_crashing_extractor():
+def run_crashing_extractor():  # pragma: no cover
     class CrashingExtractor:
         def apply(self, text):
             raise ValueError("Crash!")

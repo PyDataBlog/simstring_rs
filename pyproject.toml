@@ -31,8 +31,3 @@ classifiers = [
 [project.urls]
 Homepage = "https://github.com/PyDataBlog/simstring_rs"
 Repository = "https://github.com/PyDataBlog/simstring_rs"
-
-[tool.coverage.run]
-omit = [
-    "tests/**",
-]

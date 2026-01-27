@@ -251,10 +251,9 @@ fn test_unranked_search() {
     assert_eq!(result_err.unwrap_err(), SearchError::InvalidThreshold(-0.5));
 }
 
-
 /*
 MockDatabase is a wrapper around HashDb that implements the Database trait.
-It is used to test the Searcher with a database that returns None for get_string/get_features.  
+It is used to test the Searcher with a database that returns None for get_string/get_features.
 */
 struct MockDatabase {
     real_db: HashDb,

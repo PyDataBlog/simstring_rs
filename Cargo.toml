@@ -19,7 +19,7 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 ahash = "0.8"
-rayon = "1.10"
+rayon = "1.11"
 thiserror = "2.0"
 lasso = "0.7"
 rustc-hash = "2.1"

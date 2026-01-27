@@ -56,7 +56,7 @@ jobs:
           version: "1"
 
       - name: Cache python dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             .venv
@@ -172,7 +172,7 @@ jobs:
 
       - name: Set up cargo cache
         if: runner.os != 'macOS'
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ~/.cargo/bin/
@@ -190,7 +190,7 @@ jobs:
 
       - name: Cache python dependencies
         if: runner.os != 'macOS'
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             .venv
@@ -320,7 +320,7 @@ jobs:
 
       - name: Cache python dependencies
         if: runner.os != 'macOS'
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             .venv
@@ -431,7 +431,7 @@ jobs:
           python-version: "3.14"
 
       - name: Cache python dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             .venv

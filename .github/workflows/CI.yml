@@ -90,7 +90,7 @@ jobs:
           git stash pop
       - name: Commit benchmark results
         if: startsWith(github.ref, 'refs/tags/')
-        uses: stefanzweifel/git-auto-commit-action@v5
+        uses: stefanzweifel/git-auto-commit-action@v7
         with:
           commit_message: "docs(benchmarks): update benchmark results"
           file_pattern: BENCHMARKS.md

@@ -15,8 +15,21 @@ A native Rust implementation of the CPMerge algorithm, designed for approximate 
 - ✅ Fast algorithm for string matching
 - ✅ 100% exact retrieval
 - ✅ Support for Unicode
-- [ ] Support for building databases directly from text files
+- ✅ Support for building databases directly from text files
+- ✅ CLI tool for building and searching databases
 - [ ] Mecab-based tokenizer support
+
+## CLI Usage
+
+This crate provides a `simstring` CLI tool.
+
+```bash
+# Build
+simstring build -d phrases.db phrases.txt
+
+# Search
+simstring search -d phrases.db --source phrases.txt "query"
+```
 
 ## Supported String Similarity Measures
 

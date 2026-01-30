@@ -12,6 +12,10 @@ categories = ["text-processing"]
 homepage = "https://github.com/PyDataBlog/simstring_rs"
 readme = "README.md"
 
+[[bin]]
+name = "simstring"
+path = "src/bin/simstring.rs"
+
 [lib]
 name = "simstring_rust"
 path = "src/lib.rs"
@@ -26,12 +30,14 @@ rustc-hash = "2.1"
 pyo3 = { version = "0.27", features = ["extension-module", "abi3-py37"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
+clap = { version = "4", features = ["derive"] }
 
 [build-dependencies]
 pyo3-build-config = "0.27"
 
 [dev-dependencies]
 num_cpus = "1.17"
+tempfile = "3"
 
 [[bench]]
 name = "bench"

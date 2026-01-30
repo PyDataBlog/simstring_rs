@@ -1,3 +1,4 @@
+pub mod file_loader;
 mod hashdb;
 
 use crate::extractors::FeatureExtractor;
@@ -19,4 +20,5 @@ pub trait Database: Send + Sync {
     fn total_strings(&self) -> usize;
 }
 
+pub use file_loader::FileLoadError;
 pub use hashdb::HashDb;

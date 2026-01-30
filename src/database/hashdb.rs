@@ -49,6 +49,51 @@ impl HashDb {
     pub fn clear(&mut self) {
         Database::clear(self);
     }
+
+    /// Insert all strings from a plain text file (one per line).
+    pub fn insert_from_text_file<P: AsRef<std::path::Path>>(
+        &mut self,
+        path: P,
+    ) -> std::io::Result<usize> {
+        let strings = crate::database::file_loader::load_text_file(path)?;
+        let count = strings.len();
+        self.insert_all(strings);
+        Ok(count)
+    }
+
+    /// Insert all strings from a JSON file (array of strings).
+    pub fn insert_from_json_file<P: AsRef<std::path::Path>>(
+        &mut self,
+        path: P,
+    ) -> Result<usize, crate::database::FileLoadError> {
+        let strings = crate::database::file_loader::load_json_file(path)?;
+        let count = strings.len();
+        self.insert_all(strings);
+        Ok(count)
+    }
+
+    /// Insert all strings from a CSV file (specified column index).
+    pub fn insert_from_csv_file<P: AsRef<std::path::Path>>(
+        &mut self,
+        path: P,
+        column: usize,
+    ) -> Result<usize, crate::database::FileLoadError> {
+        let strings = crate::database::file_loader::load_csv_file(path, column)?;
+        let count = strings.len();
+        self.insert_all(strings);
+        Ok(count)
+    }
+
+    /// Bulk insert multiple strings.
+    pub fn insert_all<I, S>(&mut self, strings: I)
+    where
+        I: IntoIterator<Item = S>,
+        S: Into<String>,
+    {
+        for s in strings {
+            self.insert(s.into());
+        }
+    }
 }
 
 impl Database for HashDb {

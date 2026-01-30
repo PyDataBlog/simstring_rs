@@ -233,10 +233,8 @@ fn run_search_logic<M: Measure>(
     let searcher = Searcher::new(db, measure);
     if queries.is_empty() {
         let stdin = io::stdin();
-        for line in stdin.lock().lines() {
-            if let Ok(query) = line {
-                perform_search_ref(&searcher, &query, threshold, ranked, output, quiet);
-            }
+        for query in stdin.lock().lines().map_while(Result::ok) {
+            perform_search_ref(&searcher, &query, threshold, ranked, output, quiet);
         }
     } else {
         for query in queries {

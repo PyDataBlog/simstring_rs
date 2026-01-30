@@ -9,7 +9,7 @@ fn test_load_text_file() {
     let mut file = NamedTempFile::new().unwrap();
     writeln!(file, "hello").unwrap();
     writeln!(file, "world").unwrap();
-    writeln!(file, "").unwrap(); // Empty line should be skipped
+    writeln!(file).unwrap(); // Empty line should be skipped
     writeln!(file, "  test  ").unwrap(); // Whitespace should NOT be trimmed
 
     let strings = load_text_file(file.path()).unwrap();

@@ -60,7 +60,7 @@ jobs:
           grcov . --binary-path ./target/debug/ -s . -t cobertura --branch --ignore-not-existing --ignore "tests/*" --ignore "examples/*" --ignore "**/build.rs" --ignore "**/src/lib.rs" -o ./coverage/cobertura.xml
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v6
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage/cobertura.xml,./coverage/python-coverage.xml

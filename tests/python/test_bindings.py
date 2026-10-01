@@ -4,6 +4,7 @@ from simstring_rust.errors import SearchError
 from simstring_rust.extractors import CharacterNgrams
 from simstring_rust.measures import Cosine
 from simstring_rust.searcher import Searcher
+from concurrent.futures import ThreadPoolExecutor
 
 
 class TestSimstringBindings:
@@ -66,3 +67,16 @@ class TestSimstringBindings:
 
         with pytest.raises(SearchError, match=r"Invalid threshold: 0(\.0)?"):
             self.searcher.search("test", 0.0)
+
+    def test_concurrent_searches(self):
+        queries = ["apple", "apply", "unknown 🦀", "banana"] * 100
+        expected = [self.searcher.ranked_search(query, 0.6) for query in queries]
+        with ThreadPoolExecutor(max_workers=8) as executor:
+            actual = list(executor.map(lambda query: self.searcher.ranked_search(query, 0.6), queries))
+        assert actual == expected
+
+    def test_unknown_features_and_reinsertion(self):
+        assert self.searcher.search("apple🦀", 1.0) == []
+        self.db.clear()
+        self.db.insert("apple🦀")
+        assert self.searcher.ranked_search("apple🦀", 1.0) == [("apple🦀", 1.0)]

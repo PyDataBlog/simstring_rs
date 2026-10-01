@@ -2,6 +2,32 @@ use lasso::Rodeo;
 use simstring_rust::{CharacterNgrams, FeatureExtractor, WordNgrams};
 
 #[test]
+fn character_fast_paths_match_character_window_reference() {
+    for text in ["", "a", "aaaa", "a1a1", "東京🍕", "café", "e\u{301}"] {
+        for marker in ["", "$", "ab", "🍕!"] {
+            for n in 0..=4 {
+                let extractor = CharacterNgrams::new(n, marker);
+                let mut actual = Vec::new();
+                extractor.visit_features(text, &mut |feature| actual.push(feature.to_owned()));
+                let mut expected = Vec::new();
+                if n > 0 {
+                    let padding = marker.repeat(n - 1);
+                    let chars: Vec<_> = format!("{padding}{text}{padding}").chars().collect();
+                    let mut counts = std::collections::HashMap::new();
+                    for window in chars.windows(n) {
+                        let gram: String = window.iter().collect();
+                        let count = counts.entry(gram.clone()).or_insert(0);
+                        *count += 1;
+                        expected.push(format!("{gram}{count}"));
+                    }
+                }
+                assert_eq!(actual, expected, "text={text:?}, marker={marker:?}, n={n}");
+            }
+        }
+    }
+}
+
+#[test]
 fn test_character_ngrams_basic() {
     let mut interner = Rodeo::default();
     let extractor = CharacterNgrams::new(2, "$");

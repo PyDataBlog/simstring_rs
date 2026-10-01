@@ -18,15 +18,15 @@ enum PyFeatureExtractor {
 }
 
 impl FeatureExtractor for PyFeatureExtractor {
-    fn features(&self, text: &str, interner: &mut lasso::Rodeo) -> Vec<lasso::Spur> {
+    fn visit_features(&self, text: &str, visitor: &mut dyn FnMut(&str)) {
         match self {
-            PyFeatureExtractor::Character(e) => e.features(text, interner),
-            PyFeatureExtractor::Word(e) => e.features(text, interner),
+            PyFeatureExtractor::Character(e) => e.visit_features(text, visitor),
+            PyFeatureExtractor::Word(e) => e.visit_features(text, visitor),
         }
     }
 }
 
-#[pyclass(name = "CharacterNgrams")]
+#[pyclass(name = "CharacterNgrams", skip_from_py_object)]
 #[derive(Clone)]
 struct PyCharacterNgrams(CharacterNgrams);
 
@@ -38,7 +38,7 @@ impl PyCharacterNgrams {
     }
 }
 
-#[pyclass(name = "WordNgrams")]
+#[pyclass(name = "WordNgrams", skip_from_py_object)]
 #[derive(Clone)]
 struct PyWordNgrams(WordNgrams);
 
@@ -93,18 +93,18 @@ impl Measure for PyMeasure {
         }
     }
 
-    fn similarity(&self, x: &[lasso::Spur], y: &[lasso::Spur]) -> f64 {
+    fn similarity_from_counts(&self, x: usize, y: usize, common: usize) -> f64 {
         match self {
-            PyMeasure::Cosine => Cosine.similarity(x, y),
-            PyMeasure::Dice => Dice.similarity(x, y),
-            PyMeasure::ExactMatch => ExactMatch.similarity(x, y),
-            PyMeasure::Jaccard => Jaccard.similarity(x, y),
-            PyMeasure::Overlap => Overlap.similarity(x, y),
+            PyMeasure::Cosine => Cosine.similarity_from_counts(x, y, common),
+            PyMeasure::Dice => Dice.similarity_from_counts(x, y, common),
+            PyMeasure::ExactMatch => ExactMatch.similarity_from_counts(x, y, common),
+            PyMeasure::Jaccard => Jaccard.similarity_from_counts(x, y, common),
+            PyMeasure::Overlap => Overlap.similarity_from_counts(x, y, common),
         }
     }
 }
 
-#[pyclass(name = "Cosine")]
+#[pyclass(name = "Cosine", skip_from_py_object)]
 #[derive(Clone, Copy)]
 struct PyCosine;
 #[pymethods]
@@ -115,7 +115,7 @@ impl PyCosine {
     }
 }
 
-#[pyclass(name = "Dice")]
+#[pyclass(name = "Dice", skip_from_py_object)]
 #[derive(Clone, Copy)]
 struct PyDice;
 #[pymethods]
@@ -126,7 +126,7 @@ impl PyDice {
     }
 }
 
-#[pyclass(name = "ExactMatch")]
+#[pyclass(name = "ExactMatch", skip_from_py_object)]
 #[derive(Clone, Copy)]
 struct PyExactMatch;
 #[pymethods]
@@ -137,7 +137,7 @@ impl PyExactMatch {
     }
 }
 
-#[pyclass(name = "Jaccard")]
+#[pyclass(name = "Jaccard", skip_from_py_object)]
 #[derive(Clone, Copy)]
 struct PyJaccard;
 #[pymethods]
@@ -148,7 +148,7 @@ impl PyJaccard {
     }
 }
 
-#[pyclass(name = "Overlap")]
+#[pyclass(name = "Overlap", skip_from_py_object)]
 #[derive(Clone, Copy)]
 struct PyOverlap;
 #[pymethods]
@@ -239,11 +239,13 @@ impl PySearcher {
     ) -> PyResult<Vec<String>> {
         let db_borrow = self.db.borrow(py);
         let searcher = RustSearcher::new(&db_borrow.db, self.measure);
-        let results = searcher.search(query_string, alpha).map_err(|e| match e {
-            RustSearchError::InvalidThreshold(val) => {
-                SearchError::new_err(format!("Invalid threshold: {val}"))
-            }
-        })?;
+        let results = py
+            .detach(|| searcher.search(query_string, alpha))
+            .map_err(|e| match e {
+                RustSearchError::InvalidThreshold(val) => {
+                    SearchError::new_err(format!("Invalid threshold: {val}"))
+                }
+            })?;
         Ok(results.into_iter().map(|s| s.to_string()).collect())
     }
 
@@ -255,8 +257,8 @@ impl PySearcher {
     ) -> PyResult<Vec<(String, f64)>> {
         let db_borrow = self.db.borrow(py);
         let searcher = RustSearcher::new(&db_borrow.db, self.measure);
-        let results = searcher
-            .ranked_search(query_string, alpha)
+        let results = py
+            .detach(|| searcher.ranked_search(query_string, alpha))
             .map_err(|e| match e {
                 RustSearchError::InvalidThreshold(val) => {
                     SearchError::new_err(format!("Invalid threshold: {val}"))
@@ -303,9 +305,7 @@ fn simstring_rust(py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
 
     // Add modules to sys.modules to allow direct import
     let sys = PyModule::import(py, "sys")?;
-    let modules = sys
-        .getattr("modules")?
-        .downcast_into::<pyo3::types::PyDict>()?;
+    let modules = sys.getattr("modules")?.cast_into::<pyo3::types::PyDict>()?;
     modules.set_item("simstring_rust.database", database_module)?;
     modules.set_item("simstring_rust.extractors", extractors_module)?;
     modules.set_item("simstring_rust.measures", measures_module)?;

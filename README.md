@@ -5,7 +5,7 @@
 [![PyPI version](https://badge.fury.io/py/simstring-rust.svg)](https://badge.fury.io/py/simstring-rust)
 [![Python versions](https://img.shields.io/pypi/pyversions/simstring-rust.svg)](https://pypi.org/project/simstring-rust)
 [![Documentation](https://docs.rs/simstring_rust/badge.svg)](https://docs.rs/simstring_rust)
-[![Rust](https://img.shields.io/badge/rust-1.63.0%2B-blue.svg?maxAge=3600)](https://github.com/PyDataBlog/simstring_rs)
+[![Rust](https://img.shields.io/badge/rust-1.88%2B-blue.svg?maxAge=3600)](https://github.com/PyDataBlog/simstring_rs)
 [![Codecov](https://img.shields.io/codecov/c/github/PyDataBlog/simstring_rs?token=XJM8O8TD4U)](https://codecov.io/gh/PyDataBlog/simstring_rs)
 
 A native Rust implementation of the CPMerge algorithm, designed for approximate string matching. This crate is particularly useful for natural language processing tasks that require the retrieval of strings/texts from very large corpora (big amounts of texts). Currently, this crate supports both character and word-based N-grams feature generation, with plans to allow custom user-defined feature generation methods.
@@ -27,6 +27,10 @@ A native Rust implementation of the CPMerge algorithm, designed for approximate 
 - ✅ Exact match
 
 ## Installation
+
+Requires Rust 1.88 or newer (edition 2024). Python bindings support Python 3.10+.
+See [search performance and Rust API migration notes](SEARCH_PERFORMANCE.md)
+for the read-only query engine and benchmark commands.
 
 Add `simstring_rust` to your `Cargo.toml`:
 

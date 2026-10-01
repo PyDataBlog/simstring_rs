@@ -1,41 +1,42 @@
-use super::{compute_intersection_size, Measure};
+use super::Measure;
 use crate::database::Database;
-use lasso::Spur;
 
 #[derive(Default, Clone, Copy)]
 pub struct Jaccard;
 
 impl Measure for Jaccard {
     fn min_feature_size(&self, query_size: usize, alpha: f64) -> usize {
-        (alpha * query_size as f64).ceil() as usize
+        (alpha.next_down() * query_size as f64).next_down().ceil() as usize
     }
 
     fn max_feature_size(&self, query_size: usize, alpha: f64, _db: &dyn Database) -> usize {
-        (query_size as f64 / alpha).floor() as usize
+        (query_size as f64 / alpha.next_down()).next_up().floor() as usize
     }
 
     fn minimum_common_feature_count(&self, query_size: usize, y_size: usize, alpha: f64) -> usize {
         if alpha == -1.0 {
             return 0;
         }
-        ((alpha * (query_size as f64 + y_size as f64)) / (1.0 + alpha)).ceil() as usize
+        let alpha = alpha.next_down();
+        ((alpha * (query_size as f64 + y_size as f64)) / (1.0 + alpha))
+            .next_down()
+            .ceil() as usize
     }
 
-    fn similarity(&self, x: &[Spur], y: &[Spur]) -> f64 {
-        if x.is_empty() && y.is_empty() {
+    fn similarity_from_counts(&self, x_len: usize, y_len: usize, common: usize) -> f64 {
+        if x_len == 0 && y_len == 0 {
             return 1.0;
         }
-        if x.is_empty() || y.is_empty() {
+        if x_len == 0 || y_len == 0 {
             return 0.0;
         }
 
-        let intersection_size = compute_intersection_size(x, y);
-        let union_size = (x.len() + y.len() - intersection_size) as f64;
+        let union_size = (x_len + y_len - common) as f64;
 
         if union_size == 0.0 {
             0.0
         } else {
-            intersection_size as f64 / union_size
+            common as f64 / union_size
         }
     }
 }

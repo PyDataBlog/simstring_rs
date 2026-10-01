@@ -1,7 +1,5 @@
 use crate::FeatureExtractor;
-use lasso::{Rodeo, Spur};
 use rustc_hash::FxHashMap;
-use std::fmt::Write;
 
 #[derive(Clone)]
 pub struct WordNgrams {
@@ -27,9 +25,9 @@ impl Default for WordNgrams {
 }
 
 impl FeatureExtractor for WordNgrams {
-    fn features(&self, text: &str, interner: &mut Rodeo) -> Vec<Spur> {
+    fn visit_features(&self, text: &str, visitor: &mut dyn FnMut(&str)) {
         if self.n == 0 {
-            return vec![];
+            return;
         }
 
         let tokens: Vec<&str> = text
@@ -44,30 +42,38 @@ impl FeatureExtractor for WordNgrams {
             .collect();
 
         if padded_tokens.len() < self.n {
-            return vec![];
+            return;
         }
 
         // Inline counting + interning in one pass
         let mut counter: FxHashMap<String, usize> = FxHashMap::default();
-        let expected_ngrams = padded_tokens.len() - self.n + 1;
-        let mut result = Vec::with_capacity(expected_ngrams);
         let mut counted_buffer = String::with_capacity(64);
+        let mut ngram = String::with_capacity(64);
+        let mut number = itoa::Buffer::new();
 
         for window in padded_tokens.windows(self.n) {
-            let ngram = window.join(" ");
+            ngram.clear();
+            for (i, token) in window.iter().enumerate() {
+                if i != 0 {
+                    ngram.push(' ');
+                }
+                ngram.push_str(token);
+            }
 
             // Count occurrence
-            let count = counter.entry(ngram.clone()).or_insert(0);
-            *count += 1;
+            let count = if let Some(count) = counter.get_mut(ngram.as_str()) {
+                *count += 1;
+                *count
+            } else {
+                counter.insert(ngram.clone(), 1);
+                1
+            };
 
             // Build counted string and intern
             counted_buffer.clear();
             counted_buffer.push_str(&ngram);
-            write!(&mut counted_buffer, "{count}").unwrap();
-            result.push(interner.get_or_intern(&counted_buffer));
+            counted_buffer.push_str(number.format(count));
+            visitor(&counted_buffer);
         }
-
-        result.sort_unstable();
-        result
     }
 }

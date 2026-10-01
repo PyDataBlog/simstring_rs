@@ -1,6 +1,5 @@
 use super::Measure;
 use crate::database::Database;
-use lasso::Spur;
 
 #[derive(Default, Clone, Copy)]
 pub struct ExactMatch;
@@ -23,12 +22,8 @@ impl Measure for ExactMatch {
         query_size
     }
 
-    fn similarity(&self, x: &[Spur], y: &[Spur]) -> f64 {
-        if x.len() != y.len() {
-            return 0.0;
-        }
-
-        if x.iter().zip(y.iter()).all(|(a, b)| a == b) {
+    fn similarity_from_counts(&self, x_len: usize, y_len: usize, common: usize) -> f64 {
+        if x_len == y_len && common == x_len {
             1.0
         } else {
             0.0

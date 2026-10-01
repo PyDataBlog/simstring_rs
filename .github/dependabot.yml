@@ -10,6 +10,10 @@ updates:
     labels:
       - "dependencies"
       - "rust"
+    groups:
+      rust-dependencies:
+        patterns:
+          - "*"
 
   # Python dependencies (pip/pyproject.toml)
   - package-ecosystem: "pip"
@@ -21,6 +25,10 @@ updates:
     labels:
       - "dependencies"
       - "python"
+    groups:
+      python-dependencies:
+        patterns:
+          - "*"
 
   # GitHub Actions
   - package-ecosystem: "github-actions"
@@ -32,3 +40,7 @@ updates:
     labels:
       - "dependencies"
       - "ci"
+    groups:
+      ci-dependencies:
+        patterns:
+          - "*"

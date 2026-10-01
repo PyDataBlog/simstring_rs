@@ -184,7 +184,8 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
-          # Published abi3 wheels require a GIL-enabled interpreter.
+          # GIL-enabled CPython: the abi3 wheels built here cannot be
+          # installed on free-threaded (3.14t) interpreters.
           python-version: "3.14"
 
       - name: Cache python dependencies

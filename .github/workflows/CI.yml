@@ -132,13 +132,11 @@ jobs:
             }
 
   test:
-    name: Test on ${{ matrix.os }} / ${{ matrix.rust }}
+    name: Test on ${{ matrix.target }} / ${{ matrix.rust }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-        rust: [stable]
         include:
           - os: ubuntu-latest
             rust: stable
@@ -149,7 +147,7 @@ jobs:
           - os: windows-latest
             rust: stable
             target: x86_64-pc-windows-msvc
-          - os: macos-latest
+          - os: macos-15-intel
             rust: stable
             target: x86_64-apple-darwin
           - os: macos-latest
@@ -186,7 +184,8 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
-          python-version: "3.14t"
+          # Published abi3 wheels require a GIL-enabled interpreter.
+          python-version: "3.14"
 
       - name: Cache python dependencies
         if: runner.os != 'macOS'
@@ -194,9 +193,9 @@ jobs:
         with:
           path: |
             .venv
-          key: ${{ runner.os }}-pip-${{ hashFiles('pyproject.toml') }}
+          key: ${{ runner.os }}-${{ matrix.target }}-py314-abi3-pip-${{ hashFiles('pyproject.toml') }}
           restore-keys: |
-            ${{ runner.os }}-pip-
+            ${{ runner.os }}-${{ matrix.target }}-py314-abi3-pip-
 
       - name: Check formatting
         run: cargo fmt --all -- --check
@@ -221,7 +220,7 @@ jobs:
         shell: bash
         run: |
           pip install uv
-          uv venv
+          uv venv --clear --python "$(python -c 'import sys; print(sys.executable)')"
           if [ "$RUNNER_OS" == "Windows" ]; then
             source .venv/Scripts/activate
           else
@@ -229,7 +228,7 @@ jobs:
           fi
           uv pip install maturin pytest
           rm -rf target/wheels
-          maturin build --release
+          maturin build --release --interpreter python
           uv pip install target/wheels/*.whl
           pytest tests/python/ -vv
 

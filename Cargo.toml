@@ -33,14 +33,9 @@ pyo3-build-config = "0.29"
 
 [dev-dependencies]
 num_cpus = "1.17"
-criterion = { version = "0.8", default-features = false }
 
 [[bench]]
 name = "bench"
-harness = false
-
-[[bench]]
-name = "search"
 harness = false
 
 [profile.release]

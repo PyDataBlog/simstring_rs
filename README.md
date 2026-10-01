@@ -29,8 +29,7 @@ A native Rust implementation of the CPMerge algorithm, designed for approximate 
 ## Installation
 
 Requires Rust 1.88 or newer (edition 2024). Python bindings support Python 3.10+.
-See [search performance and Rust API migration notes](SEARCH_PERFORMANCE.md)
-for the read-only query engine and benchmark commands.
+See [Rust API migration](#rust-api-migration) for the read-only query engine's trait changes.
 
 Add `simstring_rust` to your `Cargo.toml`:
 
@@ -122,6 +121,28 @@ fn main() {
 <!-- -   Bump the version in `Cargo.toml`. -->
 <!-- -   Commit the changes and create a new Git tag. -->
 <!-- -   Push the commit and tag to GitHub, which triggers the CI/CD pipeline to publish the crate to `crates.io`. -->
+
+## Rust API migration
+
+The read-only query engine preserves the usual `HashDb` and `Searcher` calls,
+as well as Python method signatures. Custom Rust implementations need these updates:
+
+- **FeatureExtractor**: implement
+  `visit_features(&self, text: &str, visitor: &mut dyn FnMut(&str))`, emitting
+  occurrence-qualified features. The default `features` method interns, sorts,
+  and deduplicates them for insertion; search visits them without interning.
+- **Database**: `interner()` returns `&Rodeo` rather than a locked `Arc`.
+  `lookup_strings()` returns sorted, unique `Option<&[StringId]>` postings, and
+  `get_features()` returns `Option<&[Spur]>`. Implement `feature_sizes()` as a
+  sorted, unique slice of populated sizes. Each ID belongs to exactly one size
+  bucket; stored features must be sorted and unique, using the same interner.
+- **Measure**: implement `similarity_from_counts(x_len, y_len, common) -> f64`.
+  The default `similarity` intersects sorted feature sets and delegates to it.
+  Search uses counts directly, so this method must agree with the pruning bounds.
+
+Unknown query features still contribute to similarity denominators. Duplicate
+insertions remain distinct results, and queries with no features return no results.
+Both search methods now apply exact score filtering at threshold boundaries.
 
 ## Contributing
 

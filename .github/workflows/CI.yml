@@ -68,7 +68,7 @@ jobs:
         run: |
           # Install python dependencies
           pip install uv
-          uv venv
+          uv venv --clear
           source .venv/bin/activate
           uv pip install simstring-fast pandas maturin tabulate psutil
           rm -rf target/wheels
@@ -331,7 +331,7 @@ jobs:
         shell: bash
         run: |
           pip install uv
-          uv venv
+          uv venv --clear
           if [ "$RUNNER_OS" == "Windows" ]; then
             source .venv/Scripts/activate
           else
@@ -442,7 +442,7 @@ jobs:
         shell: bash
         run: |
           pip install uv
-          uv venv
+          uv venv --clear
           if [ "$RUNNER_OS" == "Windows" ]; then
             source .venv/Scripts/activate
           else

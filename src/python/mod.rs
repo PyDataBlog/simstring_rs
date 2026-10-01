@@ -15,9 +15,6 @@ struct CustomExtractorInner {
     extractor: Arc<Py<PyAny>>,
 }
 
-unsafe impl Send for CustomExtractorInner {}
-unsafe impl Sync for CustomExtractorInner {}
-
 impl CustomExtractorInner {
     fn new(extractor: Py<PyAny>) -> Self {
         Self {
@@ -42,20 +39,13 @@ impl CustomExtractorInner {
         })
     }
 
-    fn features(&self, text: &str, interner: &mut lasso::Rodeo) -> PyResult<Vec<lasso::Spur>> {
-        let raw = self.collect_raw_features(text)?;
-        Ok(crate::extractors::append_feature_counts(interner, raw))
-    }
-
     fn apply(&self, text: &str) -> PyResult<Vec<String>> {
         let raw = self.collect_raw_features(text)?;
-        let mut interner = lasso::Rodeo::default();
-        let spurs = crate::extractors::append_feature_counts(&mut interner, raw);
-
-        Ok(spurs
-            .into_iter()
-            .map(|spur| interner.resolve(&spur).to_string())
-            .collect())
+        let mut features = Vec::with_capacity(raw.len());
+        crate::extractors::visit_counted_features(&raw, &mut |feature| {
+            features.push(feature.to_owned())
+        });
+        Ok(features)
     }
 }
 
@@ -68,12 +58,12 @@ enum PyFeatureExtractor {
 }
 
 impl FeatureExtractor for PyFeatureExtractor {
-    fn features(&self, text: &str, interner: &mut lasso::Rodeo) -> Vec<lasso::Spur> {
+    fn visit_features(&self, text: &str, visitor: &mut dyn FnMut(&str)) {
         match self {
-            PyFeatureExtractor::Character(e) => e.features(text, interner),
-            PyFeatureExtractor::Word(e) => e.features(text, interner),
-            PyFeatureExtractor::Custom(e) => match e.features(text, interner) {
-                Ok(features) => features,
+            PyFeatureExtractor::Character(e) => e.visit_features(text, visitor),
+            PyFeatureExtractor::Word(e) => e.visit_features(text, visitor),
+            PyFeatureExtractor::Custom(e) => match e.collect_raw_features(text) {
+                Ok(features) => crate::extractors::visit_counted_features(&features, visitor),
                 Err(err) => {
                     Python::attach(|py| err.print(py));
                     panic!("Custom extractor apply() raised an exception");
@@ -83,7 +73,7 @@ impl FeatureExtractor for PyFeatureExtractor {
     }
 }
 
-#[pyclass(name = "CharacterNgrams")]
+#[pyclass(name = "CharacterNgrams", skip_from_py_object)]
 #[derive(Clone)]
 struct PyCharacterNgrams(CharacterNgrams);
 
@@ -105,7 +95,7 @@ impl PyCharacterNgrams {
     }
 }
 
-#[pyclass(name = "WordNgrams")]
+#[pyclass(name = "WordNgrams", skip_from_py_object)]
 #[derive(Clone)]
 struct PyWordNgrams(WordNgrams);
 
@@ -127,7 +117,7 @@ impl PyWordNgrams {
     }
 }
 
-#[pyclass(name = "CustomExtractor")]
+#[pyclass(name = "CustomExtractor", skip_from_py_object)]
 #[derive(Clone)]
 struct PyCustomExtractor(CustomExtractorInner);
 
@@ -195,18 +185,18 @@ impl Measure for PyMeasure {
         }
     }
 
-    fn similarity(&self, x: &[lasso::Spur], y: &[lasso::Spur]) -> f64 {
+    fn similarity_from_counts(&self, x: usize, y: usize, common: usize) -> f64 {
         match self {
-            PyMeasure::Cosine => Cosine.similarity(x, y),
-            PyMeasure::Dice => Dice.similarity(x, y),
-            PyMeasure::ExactMatch => ExactMatch.similarity(x, y),
-            PyMeasure::Jaccard => Jaccard.similarity(x, y),
-            PyMeasure::Overlap => Overlap.similarity(x, y),
+            PyMeasure::Cosine => Cosine.similarity_from_counts(x, y, common),
+            PyMeasure::Dice => Dice.similarity_from_counts(x, y, common),
+            PyMeasure::ExactMatch => ExactMatch.similarity_from_counts(x, y, common),
+            PyMeasure::Jaccard => Jaccard.similarity_from_counts(x, y, common),
+            PyMeasure::Overlap => Overlap.similarity_from_counts(x, y, common),
         }
     }
 }
 
-#[pyclass(name = "Cosine")]
+#[pyclass(name = "Cosine", skip_from_py_object)]
 #[derive(Clone, Copy)]
 struct PyCosine;
 #[pymethods]
@@ -217,7 +207,7 @@ impl PyCosine {
     }
 }
 
-#[pyclass(name = "Dice")]
+#[pyclass(name = "Dice", skip_from_py_object)]
 #[derive(Clone, Copy)]
 struct PyDice;
 #[pymethods]
@@ -228,7 +218,7 @@ impl PyDice {
     }
 }
 
-#[pyclass(name = "ExactMatch")]
+#[pyclass(name = "ExactMatch", skip_from_py_object)]
 #[derive(Clone, Copy)]
 struct PyExactMatch;
 #[pymethods]
@@ -239,7 +229,7 @@ impl PyExactMatch {
     }
 }
 
-#[pyclass(name = "Jaccard")]
+#[pyclass(name = "Jaccard", skip_from_py_object)]
 #[derive(Clone, Copy)]
 struct PyJaccard;
 #[pymethods]
@@ -250,7 +240,7 @@ impl PyJaccard {
     }
 }
 
-#[pyclass(name = "Overlap")]
+#[pyclass(name = "Overlap", skip_from_py_object)]
 #[derive(Clone, Copy)]
 struct PyOverlap;
 #[pymethods]
@@ -343,11 +333,13 @@ impl PySearcher {
     ) -> PyResult<Vec<String>> {
         let db_borrow = self.db.borrow(py);
         let searcher = RustSearcher::new(&db_borrow.db, self.measure);
-        let results = searcher.search(query_string, alpha).map_err(|e| match e {
-            RustSearchError::InvalidThreshold(val) => {
-                SearchError::new_err(format!("Invalid threshold: {val}"))
-            }
-        })?;
+        let results = py
+            .detach(|| searcher.search(query_string, alpha))
+            .map_err(|e| match e {
+                RustSearchError::InvalidThreshold(val) => {
+                    SearchError::new_err(format!("Invalid threshold: {val}"))
+                }
+            })?;
         Ok(results.into_iter().map(|s| s.to_string()).collect())
     }
 
@@ -359,8 +351,8 @@ impl PySearcher {
     ) -> PyResult<Vec<(String, f64)>> {
         let db_borrow = self.db.borrow(py);
         let searcher = RustSearcher::new(&db_borrow.db, self.measure);
-        let results = searcher
-            .ranked_search(query_string, alpha)
+        let results = py
+            .detach(|| searcher.ranked_search(query_string, alpha))
             .map_err(|e| match e {
                 RustSearchError::InvalidThreshold(val) => {
                     SearchError::new_err(format!("Invalid threshold: {val}"))

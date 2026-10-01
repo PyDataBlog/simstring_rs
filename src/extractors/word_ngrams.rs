@@ -1,5 +1,5 @@
 use crate::FeatureExtractor;
-use lasso::{Rodeo, Spur};
+use rustc_hash::FxHashMap;
 
 #[derive(Clone)]
 pub struct WordNgrams {
@@ -25,30 +25,55 @@ impl Default for WordNgrams {
 }
 
 impl FeatureExtractor for WordNgrams {
-    fn features(&self, text: &str, interner: &mut Rodeo) -> Vec<Spur> {
+    fn visit_features(&self, text: &str, visitor: &mut dyn FnMut(&str)) {
         if self.n == 0 {
-            return vec![];
+            return;
         }
 
-        let tokens = text.split(&self.splitter).filter(|s| !s.is_empty());
+        let tokens: Vec<&str> = text
+            .split(&self.splitter)
+            .filter(|s| !s.is_empty())
+            .collect();
 
-        // an iterator that includes padding
-        let padded_tokens_iter = std::iter::once(self.padder.as_str())
+        // Padded tokens iterator
+        let padded_tokens: Vec<&str> = std::iter::once(self.padder.as_str())
             .chain(tokens)
-            .chain(std::iter::once(self.padder.as_str()));
+            .chain(std::iter::once(self.padder.as_str()))
+            .collect();
 
-        // Use a buffer to collect tokens for each n-gram
-        let mut buffer: Vec<&str> = Vec::with_capacity(self.n);
-        let mut ngrams = Vec::new();
-
-        for token in padded_tokens_iter {
-            buffer.push(token);
-            if buffer.len() == self.n {
-                ngrams.push(buffer.join(" "));
-                buffer.remove(0);
-            }
+        if padded_tokens.len() < self.n {
+            return;
         }
 
-        super::append_feature_counts(interner, ngrams)
+        // Inline counting + interning in one pass
+        let mut counter: FxHashMap<String, usize> = FxHashMap::default();
+        let mut counted_buffer = String::with_capacity(64);
+        let mut ngram = String::with_capacity(64);
+        let mut number = itoa::Buffer::new();
+
+        for window in padded_tokens.windows(self.n) {
+            ngram.clear();
+            for (i, token) in window.iter().enumerate() {
+                if i != 0 {
+                    ngram.push(' ');
+                }
+                ngram.push_str(token);
+            }
+
+            // Count occurrence
+            let count = if let Some(count) = counter.get_mut(ngram.as_str()) {
+                *count += 1;
+                *count
+            } else {
+                counter.insert(ngram.clone(), 1);
+                1
+            };
+
+            // Build counted string and intern
+            counted_buffer.clear();
+            counted_buffer.push_str(&ngram);
+            counted_buffer.push_str(number.format(count));
+            visitor(&counted_buffer);
+        }
     }
 }

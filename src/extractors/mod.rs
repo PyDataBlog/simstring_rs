@@ -3,32 +3,37 @@ mod word_ngrams;
 
 use lasso::{Rodeo, Spur};
 use rustc_hash::FxHashMap;
-use std::fmt::Write;
 
-/// Takes a list of features and makes each one unique by appending its occurrence count,
-/// then interns the result and returns them sorted.
-pub(crate) fn append_feature_counts(interner: &mut Rodeo, features: Vec<String>) -> Vec<Spur> {
-    let mut counter: FxHashMap<String, usize> = FxHashMap::default();
-    let mut unique_features = Vec::with_capacity(features.len());
-
+/// Visits raw custom features with their occurrence counts appended.
+pub(crate) fn visit_counted_features(features: &[String], visitor: &mut dyn FnMut(&str)) {
+    let mut counter: FxHashMap<&str, usize> = FxHashMap::default();
+    let mut buffer = String::new();
+    let mut number = itoa::Buffer::new();
     for val in features {
-        let count = counter.entry(val.clone()).or_insert(0);
+        let count = counter.entry(val).or_default();
         *count += 1;
-
-        let mut unique_string = String::with_capacity(val.len() + 8); // Extra space for count
-        unique_string.push_str(&val);
-        write!(&mut unique_string, "{count}",).unwrap();
-
-        unique_features.push(interner.get_or_intern(unique_string));
+        buffer.clear();
+        buffer.push_str(val);
+        buffer.push_str(number.format(*count));
+        visitor(&buffer);
     }
-
-    unique_features.sort_unstable();
-    unique_features
 }
 
 pub trait FeatureExtractor: Send + Sync {
-    /// Extracts features from text, interning them and returning their IDs.
-    fn features(&self, text: &str, interner: &mut Rodeo) -> Vec<Spur>;
+    /// Visits occurrence-qualified features. Each feature must be unique within a text.
+    /// The borrowed string is valid only for the duration of the callback.
+    fn visit_features(&self, text: &str, visitor: &mut dyn FnMut(&str));
+
+    /// Extracts features for insertion, sorted by interned ID.
+    fn features(&self, text: &str, interner: &mut Rodeo) -> Vec<Spur> {
+        let mut features = Vec::new();
+        self.visit_features(text, &mut |feature| {
+            features.push(interner.get_or_intern(feature));
+        });
+        features.sort_unstable();
+        features.dedup();
+        features
+    }
 }
 
 pub use character_ngrams::CharacterNgrams;

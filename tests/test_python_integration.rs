@@ -7,19 +7,20 @@ use std::process::Command;
 fn run_python_tests() {
     let project_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     let venv_dir = project_root.join("target").join("pytest_venv");
-    let python_executable_path;
-    let maturin_executable_path;
-    let pytest_executable_path;
-
-    if cfg!(windows) {
-        python_executable_path = venv_dir.join("Scripts").join("python.exe");
-        maturin_executable_path = venv_dir.join("Scripts").join("maturin.exe");
-        pytest_executable_path = venv_dir.join("Scripts").join("pytest.exe");
+    let (python_executable_path, maturin_executable_path, pytest_executable_path) = if cfg!(windows)
+    {
+        (
+            venv_dir.join("Scripts/python.exe"),
+            venv_dir.join("Scripts/maturin.exe"),
+            venv_dir.join("Scripts/pytest.exe"),
+        )
     } else {
-        python_executable_path = venv_dir.join("bin").join("python");
-        maturin_executable_path = venv_dir.join("bin").join("maturin");
-        pytest_executable_path = venv_dir.join("bin").join("pytest");
-    }
+        (
+            venv_dir.join("bin/python"),
+            venv_dir.join("bin/maturin"),
+            venv_dir.join("bin/pytest"),
+        )
+    };
 
     // Create virtual environment if it doesn't exist
     if !venv_dir.exists() {
@@ -62,12 +63,13 @@ fn run_python_tests() {
     let wheel_path = std::fs::read_dir("target/wheels")
         .unwrap()
         .filter_map(|entry| entry.ok())
-        .find(|entry| {
+        .filter(|entry| {
             entry
                 .path()
                 .extension()
                 .map_or_else(|| false, |ext| ext == "whl")
         })
+        .max_by_key(|entry| entry.metadata().and_then(|m| m.modified()).ok())
         .unwrap()
         .path();
 

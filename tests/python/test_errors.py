@@ -19,7 +19,7 @@ def test_custom_extractor_panic():
     p = multiprocessing.Process(target=run_crashing_extractor)
     p.start()
     p.join()
-    
+
     # Check if the process exited with an error (panic usually causes non-zero exit code)
     assert p.exitcode != 0
 

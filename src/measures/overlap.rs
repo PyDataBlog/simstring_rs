@@ -1,6 +1,5 @@
-use super::{compute_intersection_size, Measure};
+use super::Measure;
 use crate::database::Database;
-use lasso::Spur;
 use std::cmp;
 
 #[derive(Default, Clone, Copy)]
@@ -16,24 +15,25 @@ impl Measure for Overlap {
     }
 
     fn minimum_common_feature_count(&self, query_size: usize, y_size: usize, alpha: f64) -> usize {
-        (alpha * cmp::min(query_size, y_size) as f64).ceil() as usize
+        (alpha.next_down() * cmp::min(query_size, y_size) as f64)
+            .next_down()
+            .ceil() as usize
     }
 
-    fn similarity(&self, x: &[Spur], y: &[Spur]) -> f64 {
-        if x.is_empty() && y.is_empty() {
+    fn similarity_from_counts(&self, x_len: usize, y_len: usize, common: usize) -> f64 {
+        if x_len == 0 && y_len == 0 {
             return 1.0;
         }
-        if x.is_empty() || y.is_empty() {
+        if x_len == 0 || y_len == 0 {
             return 0.0;
         }
 
-        let intersection_size = compute_intersection_size(x, y);
-        let denominator = cmp::min(x.len(), y.len()) as f64;
+        let denominator = cmp::min(x_len, y_len) as f64;
 
         if denominator == 0.0 {
             0.0
         } else {
-            intersection_size as f64 / denominator
+            common as f64 / denominator
         }
     }
 }

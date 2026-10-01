@@ -5,7 +5,8 @@ description = "A native Rust implementation of the SimString algorithm"
 license = "MIT"
 repository = "https://github.com/PyDataBlog/simstring_rs"
 documentation = "https://docs.rs/simstringrust"
-edition = "2021"
+edition = "2024"
+rust-version = "1.88"
 authors = ["Bernard Brenyah <bbrenyah@gmail.com>"]
 keywords = ["string-matching", "nlp", "simstring", "cpmerge"]
 categories = ["text-processing"]
@@ -18,17 +19,17 @@ path = "src/lib.rs"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-ahash = "0.8"
-rayon = "1.11"
+rayon = "1.12"
+itoa = "1.0"
 thiserror = "2.0"
 lasso = "0.7"
 rustc-hash = "2.1"
-pyo3 = { version = "0.27", features = ["extension-module", "abi3-py37"] }
+pyo3 = { version = "0.29", features = ["extension-module", "abi3-py310"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 
 [build-dependencies]
-pyo3-build-config = "0.27"
+pyo3-build-config = "0.29"
 
 [dev-dependencies]
 num_cpus = "1.17"

@@ -1,4 +1,6 @@
-[target.aarch64-apple-darwin]
+# Python extension symbols are resolved by the interpreter at load time.
+# Apply this to both Intel and Apple Silicon macOS builds.
+[target.'cfg(target_os = "macos")']
 rustflags = [
     "-C", "link-arg=-undefined",
     "-C", "link-arg=dynamic_lookup",

@@ -10,11 +10,51 @@ use std::sync::Arc;
 
 create_exception!(simstring_rust, SearchError, pyo3::exceptions::PyValueError);
 
+#[derive(Clone)]
+struct CustomExtractorInner {
+    extractor: Arc<Py<PyAny>>,
+}
+
+impl CustomExtractorInner {
+    fn new(extractor: Py<PyAny>) -> Self {
+        Self {
+            extractor: Arc::new(extractor),
+        }
+    }
+
+    fn collect_raw_features(&self, text: &str) -> PyResult<Vec<String>> {
+        let extractor = Arc::clone(&self.extractor);
+        Python::attach(|py| {
+            let extractor = extractor.bind(py);
+            let result = extractor.call_method1("apply", (text,))?;
+            let iter = result.try_iter()?;
+
+            let mut features = Vec::new();
+            for item in iter {
+                let item = item?;
+                features.push(item.extract::<String>()?);
+            }
+
+            Ok(features)
+        })
+    }
+
+    fn apply(&self, text: &str) -> PyResult<Vec<String>> {
+        let raw = self.collect_raw_features(text)?;
+        let mut features = Vec::with_capacity(raw.len());
+        crate::extractors::visit_counted_features(&raw, &mut |feature| {
+            features.push(feature.to_owned())
+        });
+        Ok(features)
+    }
+}
+
 // Wrapper for FeatureExtractor trait as I can't find any direct translation.
 #[derive(Clone)]
 enum PyFeatureExtractor {
     Character(CharacterNgrams),
     Word(WordNgrams),
+    Custom(CustomExtractorInner),
 }
 
 impl FeatureExtractor for PyFeatureExtractor {
@@ -22,6 +62,13 @@ impl FeatureExtractor for PyFeatureExtractor {
         match self {
             PyFeatureExtractor::Character(e) => e.visit_features(text, visitor),
             PyFeatureExtractor::Word(e) => e.visit_features(text, visitor),
+            PyFeatureExtractor::Custom(e) => match e.collect_raw_features(text) {
+                Ok(features) => crate::extractors::visit_counted_features(&features, visitor),
+                Err(err) => {
+                    Python::attach(|py| err.print(py));
+                    panic!("Custom extractor apply() raised an exception");
+                }
+            },
         }
     }
 }
@@ -36,6 +83,16 @@ impl PyCharacterNgrams {
     fn new(n: usize, endmarker: &str) -> Self {
         Self(CharacterNgrams::new(n, endmarker))
     }
+
+    fn apply(&self, text: &str) -> Vec<String> {
+        let mut interner = lasso::Rodeo::default();
+        let features = self.0.features(text, &mut interner);
+
+        features
+            .into_iter()
+            .map(|spur| interner.resolve(&spur).to_string())
+            .collect()
+    }
 }
 
 #[pyclass(name = "WordNgrams", skip_from_py_object)]
@@ -47,6 +104,41 @@ impl PyWordNgrams {
     #[new]
     fn new(n: usize, splitter: &str, padder: &str) -> Self {
         Self(WordNgrams::new(n, splitter, padder))
+    }
+
+    fn apply(&self, text: &str) -> Vec<String> {
+        let mut interner = lasso::Rodeo::default();
+        let features = self.0.features(text, &mut interner);
+
+        features
+            .into_iter()
+            .map(|spur| interner.resolve(&spur).to_string())
+            .collect()
+    }
+}
+
+#[pyclass(name = "CustomExtractor", skip_from_py_object)]
+#[derive(Clone)]
+struct PyCustomExtractor(CustomExtractorInner);
+
+#[pymethods]
+impl PyCustomExtractor {
+    #[new]
+    fn new(extractor: Py<PyAny>) -> PyResult<Self> {
+        Python::attach(|py| {
+            let bound = extractor.bind(py);
+            if !bound.hasattr("apply")? {
+                Err(pyo3::exceptions::PyTypeError::new_err(
+                    "Custom extractor must provide an apply(text: str) -> Iterable[str] method",
+                ))
+            } else {
+                Ok(Self(CustomExtractorInner::new(extractor)))
+            }
+        })
+    }
+
+    fn apply(&self, text: &str) -> PyResult<Vec<String>> {
+        self.0.apply(text)
     }
 }
 
@@ -173,9 +265,11 @@ impl PyHashDb {
                 PyFeatureExtractor::Character(char_ngram.0.clone())
             } else if let Ok(word_ngram) = extractor.extract::<PyRef<PyWordNgrams>>() {
                 PyFeatureExtractor::Word(word_ngram.0.clone())
+            } else if let Ok(custom) = extractor.extract::<PyRef<PyCustomExtractor>>() {
+                PyFeatureExtractor::Custom(custom.0.clone())
             } else {
                 return Err(pyo3::exceptions::PyTypeError::new_err(
-                    "Extractor must be CharacterNgrams or WordNgrams",
+                    "Extractor must be CharacterNgrams, WordNgrams, or CustomExtractor",
                 ));
             };
 
@@ -282,6 +376,7 @@ fn simstring_rust(py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     let extractors_module = PyModule::new(py, "extractors")?;
     extractors_module.add_class::<PyCharacterNgrams>()?;
     extractors_module.add_class::<PyWordNgrams>()?;
+    extractors_module.add_class::<PyCustomExtractor>()?;
     m.add_submodule(&extractors_module)?;
 
     // Measures submodule

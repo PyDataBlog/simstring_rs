@@ -1,7 +1,9 @@
 import pytest
+from collections import Counter
+
 from simstring_rust.database import HashDb
 from simstring_rust.errors import SearchError
-from simstring_rust.extractors import CharacterNgrams
+from simstring_rust.extractors import CharacterNgrams, WordNgrams, CustomExtractor
 from simstring_rust.measures import Cosine
 from simstring_rust.searcher import Searcher
 from concurrent.futures import ThreadPoolExecutor
@@ -80,3 +82,92 @@ class TestSimstringBindings:
         self.db.clear()
         self.db.insert("apple🦀")
         assert self.searcher.ranked_search("apple🦀", 1.0) == [("apple🦀", 1.0)]
+
+    def test_character_ngram_apply(self):
+        extractor = CharacterNgrams(n=2, endmarker="$")
+        features = extractor.apply("apple")
+
+        expected = ["$a1", "ap1", "pp1", "pl1", "le1", "e$1"]
+        assert Counter(features) == Counter(expected)
+
+    def test_word_ngram_apply(self):
+        extractor = WordNgrams(n=2, splitter=" ", padder="#")
+        features = extractor.apply("foo bar baz")
+
+        expected = ["# foo1", "foo bar1", "bar baz1", "baz #1"]
+        assert Counter(features) == Counter(expected)
+
+    def test_custom_extractor_apply(self):
+        class UnigramExtractor:
+            def apply(self, text: str):
+                return list(text)
+
+        extractor = CustomExtractor(UnigramExtractor())
+        features = extractor.apply("foo")
+
+        expected = ["f1", "o1", "o2"]
+        assert Counter(features) == Counter(expected)
+
+    def test_custom_extractor_in_db(self):
+        class UnigramExtractor:
+            def apply(self, text: str):
+                return list(text)
+
+        extractor = CustomExtractor(UnigramExtractor())
+        db = HashDb(extractor)
+        db.insert("foo")
+        db.insert("bar")
+
+        searcher = Searcher(db, Cosine())
+        results = searcher.search("foo", 0.8)
+
+        assert results == ["foo"]
+
+    def test_custom_extractor_concurrent_queries(self):
+        class TokenExtractor:
+            def apply(self, text):
+                yield from text.split()
+
+        db = HashDb(CustomExtractor(TokenExtractor()))
+        db.insert("foo foo bar")
+        db.insert("foo bar")
+        searcher = Searcher(db, Cosine())
+        queries = ["foo foo bar", "foo bar", "foo unknown", "🦀"] * 25
+        expected = [searcher.ranked_search(query, 0.5) for query in queries]
+        assert searcher.ranked_search("foo unknown", 0.5) == [("foo bar", 0.5)]
+        with ThreadPoolExecutor(max_workers=4) as executor:
+            actual = list(executor.map(lambda query: searcher.ranked_search(query, 0.5), queries))
+        assert actual == expected
+
+    def test_word_ngram_edge_cases(self):
+        # Empty string
+        extractor = WordNgrams(n=2, splitter=" ", padder="#")
+        features = extractor.apply("")
+        # With n=2 and 1 padding on each side, we get ["# #"] -> ["# #1"]
+        assert features == ["# #1"]
+
+        # String with only separators
+        features_sep = extractor.apply("   ")
+        assert features_sep == ["# #1"]
+
+        # Different splitter
+        extractor_comma = WordNgrams(n=2, splitter=",", padder="#")
+        features_comma = extractor_comma.apply("foo,bar")
+        expected_comma = ["# foo1", "foo bar1", "bar #1"]
+        assert Counter(features_comma) == Counter(expected_comma)
+
+    def test_word_ngrams_in_db(self):
+        extractor = WordNgrams(n=2, splitter=" ", padder="#")
+        db = HashDb(extractor)
+        db.insert("foo bar")
+        searcher = Searcher(db, Cosine())
+        results = searcher.search("foo bar", 1.0)
+        assert results == ["foo bar"]
+
+    def test_invalid_extractor_in_db(self):
+        with pytest.raises(TypeError, match="Extractor must be CharacterNgrams, WordNgrams, or CustomExtractor"):
+            HashDb("not an extractor")
+
+    def test_ranked_search_error_on_invalid_threshold(self):
+        with pytest.raises(SearchError, match=r"Invalid threshold: 1\.1"):
+            self.searcher.ranked_search("test", 1.1)

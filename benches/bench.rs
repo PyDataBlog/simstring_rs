@@ -112,7 +112,7 @@ fn bench_search(results: &mut Vec<BenchmarkResult>) {
             while start_time.elapsed() < Duration::from_secs(20) && iteration < 100 {
                 let start = Instant::now();
                 for term in &search_terms {
-                    std::hint::black_box(searcher.ranked_search(term, *threshold).unwrap());
+                    std::hint::black_box(searcher.search(term, *threshold).unwrap());
                 }
                 let duration = start.elapsed();
                 measurements.push(duration.as_secs_f64() * 1000.0);

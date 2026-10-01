@@ -28,6 +28,9 @@ Session.vim
 .vscode/
 .DS_Store
 bench
+.simstring_cpp
+.simstring_cpp/
+benches/.simstring_cpp/
 .venv
 uv.lock
 tests/python/__pycache__

@@ -2,6 +2,22 @@ mod character_ngrams;
 mod word_ngrams;
 
 use lasso::{Rodeo, Spur};
+use rustc_hash::FxHashMap;
+
+/// Visits raw custom features with their occurrence counts appended.
+pub(crate) fn visit_counted_features(features: &[String], visitor: &mut dyn FnMut(&str)) {
+    let mut counter: FxHashMap<&str, usize> = FxHashMap::default();
+    let mut buffer = String::new();
+    let mut number = itoa::Buffer::new();
+    for val in features {
+        let count = counter.entry(val).or_default();
+        *count += 1;
+        buffer.clear();
+        buffer.push_str(val);
+        buffer.push_str(number.format(*count));
+        visitor(&buffer);
+    }
+}
 
 pub trait FeatureExtractor: Send + Sync {
     /// Visits occurrence-qualified features. Each feature must be unique within a text.

@@ -75,6 +75,14 @@ process memory, not an isolated index-allocation measurement.
 
 ## Reproducing measurements
 
+After merging current `main`, the shared JSON benchmark uses **unranked** search
+to match the other language implementations and C++ comparisons. The historical
+table above records ranked searches from before that merge; use the Criterion
+ranked cases for new ranked measurements. Current `main` also adds Python
+`CustomExtractor` and direct extractor `apply` methods; these are preserved,
+with custom callbacks adapted to the read-only feature visitor. Python callbacks
+reattach to the interpreter only while collecting their raw features.
+
 ```sh
 cargo bench --bench bench
 cargo bench --bench search -- --noplot
@@ -136,6 +144,7 @@ cargo test --test test_python_integration -- --ignored
 cargo +1.88.0 check --all-targets --locked
 ```
 
-All passed locally, including 51 Rust tests, seven Python tests, and the minimum
+All passed locally after merging current `main`, including 72 Rust tests,
+22 Python tests (including concurrent custom extractors), and the minimum
 Rust version check. The Python
 integration test builds and installs a release wheel before testing it.

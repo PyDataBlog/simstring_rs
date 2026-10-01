@@ -2,7 +2,7 @@ name: Rust CI/CD
 
 on:
   push:
-    branches: ["main", "perf/search-optimization"]
+    branches: ["main"]
     tags:
       - "v*"
   pull_request:
@@ -20,7 +20,7 @@ jobs:
       contents: write
       pull-requests: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           # On pull requests, check out the head ref so we can commit to it
           ref: ${{ github.head_ref }}
@@ -32,7 +32,7 @@ jobs:
           sudo apt-get install -y software-properties-common
           sudo add-apt-repository universe
           sudo apt-get update
-          sudo apt-get install -y build-essential simstring-bin
+          sudo apt-get install -y build-essential autoconf automake libtool swig python3-dev simstring-bin
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -41,26 +41,26 @@ jobs:
           components: rustfmt, clippy
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
-          python-version: "3.13"
+          python-version: "3.14"
 
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
-          ruby-version: "3.3"
+          ruby-version: "3.4"
 
       - name: Set up Julia
         uses: julia-actions/setup-julia@v2
         with:
-          version: "1.11"
+          version: "1"
 
       - name: Cache python dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             .venv
-          key: ${{ runner.os }}-pip-${{ hashFiles('**/pyproject.toml') }}
+          key: ${{ runner.os }}-pip-${{ hashFiles('pyproject.toml') }}
           restore-keys: |
             ${{ runner.os }}-pip-
 
@@ -90,14 +90,14 @@ jobs:
           git stash pop
       - name: Commit benchmark results
         if: startsWith(github.ref, 'refs/tags/')
-        uses: stefanzweifel/git-auto-commit-action@v5
+        uses: stefanzweifel/git-auto-commit-action@v7
         with:
           commit_message: "docs(benchmarks): update benchmark results"
           file_pattern: BENCHMARKS.md
 
       - name: Post benchmark results to PR
         if: github.event_name == 'pull_request'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
@@ -157,7 +157,7 @@ jobs:
             target: aarch64-apple-darwin
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -171,7 +171,8 @@ jobs:
         run: cargo install cross
 
       - name: Set up cargo cache
-        uses: actions/cache@v4
+        if: runner.os != 'macOS'
+        uses: actions/cache@v5
         with:
           path: |
             ~/.cargo/bin/
@@ -179,20 +180,21 @@ jobs:
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
             target/
-          key: ${{ runner.os }}-${{ matrix.target }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ runner.os }}-${{ matrix.target }}-cargo-${{ hashFiles('Cargo.lock') }}
           restore-keys: ${{ runner.os }}-${{ matrix.target }}-cargo-
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
-          python-version: "3.13"
+          python-version: "3.14t"
 
       - name: Cache python dependencies
-        uses: actions/cache@v4
+        if: runner.os != 'macOS'
+        uses: actions/cache@v5
         with:
           path: |
             .venv
-          key: ${{ runner.os }}-pip-${{ hashFiles('**/pyproject.toml') }}
+          key: ${{ runner.os }}-pip-${{ hashFiles('pyproject.toml') }}
           restore-keys: |
             ${{ runner.os }}-pip-
 
@@ -248,10 +250,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [windows-latest, macos-latest]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.10"
 
@@ -264,42 +266,65 @@ jobs:
           target: ${{ runner.os == 'macOS' && 'universal2-apple-darwin' || '' }}
 
       - name: Upload wheels
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: wheels-${{ matrix.os }}
           path: dist
 
+  build_wheels_linux:
+    name: Build manylinux wheels
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.10"
+
+      - name: Build wheels
+        uses: PyO3/maturin-action@v1
+        with:
+          command: build
+          args: --release --out dist
+          manylinux: "2014"
+
+      - name: Upload wheels
+        uses: actions/upload-artifact@v6
+        with:
+          name: wheels-linux
+          path: dist
+
   test_wheels:
     name: Test wheels on ${{ matrix.os }} / Python ${{ matrix.python-version }}
-    needs: [build_wheels]
+    needs: [build_wheels, build_wheels_linux]
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-13, macos-14, macos-15]
-        python-version: ["3.10", "3.11", "3.12", "3.13"]
+        os: [ubuntu-latest, windows-latest, macos-14, macos-15, macos-latest]
+        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
         exclude:
           # Exclude Python 3.10 on macos-14 due to known issues with setup-python
           - os: macos-14
             python-version: "3.10"
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v7
         with:
           pattern: wheels-*
           path: dist
           merge-multiple: true
 
       - name: Cache python dependencies
-        uses: actions/cache@v4
+        if: runner.os != 'macOS'
+        uses: actions/cache@v5
         with:
           path: |
             .venv
-          key: ${{ runner.os }}-pip-${{ matrix.python-version }}-${{ hashFiles('**/pyproject.toml') }}
+          key: ${{ runner.os }}-pip-${{ matrix.python-version }}-${{ hashFiles('pyproject.toml') }}
           restore-keys: |
             ${{ runner.os }}-pip-${{ matrix.python-version }}-
 
@@ -338,8 +363,8 @@ jobs:
     permissions:
       id-token: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@v6
+      - uses: actions/download-artifact@v7
         with:
           pattern: wheels-*
           path: dist
@@ -368,8 +393,8 @@ jobs:
     permissions:
       id-token: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@v6
+      - uses: actions/download-artifact@v7
         with:
           pattern: wheels-*
           path: dist
@@ -392,7 +417,7 @@ jobs:
     needs: test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -401,16 +426,16 @@ jobs:
         run: cargo run --example basic --release
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
-          python-version: "3.13"
+          python-version: "3.14"
 
       - name: Cache python dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             .venv
-          key: ${{ runner.os }}-pip-${{ hashFiles('**/pyproject.toml') }}
+          key: ${{ runner.os }}-pip-${{ hashFiles('pyproject.toml') }}
           restore-keys: |
             ${{ runner.os }}-pip-
 
@@ -437,7 +462,7 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -459,35 +484,26 @@ jobs:
       contents: write
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0 # get all tags
 
-      - name: Get release notes
-        id: get_release_notes
-        run: |
-          # Get the latest tag
-          latest_tag=$(git describe --tags --abbrev=0)
-          echo "latest_tag=${latest_tag}" >> $GITHUB_ENV
-
-          # Extract release notes from CHANGELOG.md
-          # This script extracts the content between the latest tag and the previous tag.
-          notes=$(awk -v tag="## [${latest_tag##v}]" '
-            BEGIN { p = 0 }
-            $0 ~ tag { p = 1; next }
-            p && /^## / { exit }
-            p { print }
-          ' CHANGELOG.md)
-          echo "notes<<EOF" >> $GITHUB_OUTPUT
-          echo "$notes" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+      - name: Generate a changelog
+        uses: orhun/git-cliff-action@v4
+        id: git-cliff
+        with:
+          config: cliff.toml
+          args: -vv --latest --strip header
+        env:
+          OUTPUT: CHANGELOG.md
+          GITHUB_REPO: ${{ github.repository }}
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ env.latest_tag }}
-          name: "Release ${{ env.latest_tag }}"
-          body: ${{ steps.get_release_notes.outputs.notes }}
+          tag_name: ${{ github.ref_name }}
+          name: "Release ${{ github.ref_name }}"
+          body: ${{ steps.git-cliff.outputs.content }}
           draft: false
           prerelease: contains(github.ref, 'alpha') || contains(github.ref, 'beta') || contains(github.ref, 'rc')
         env:

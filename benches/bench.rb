@@ -62,7 +62,7 @@ def bench_search(results)
       while Time.now - start_time < 20 && iterations < 100
         time = Benchmark.realtime do
           search_terms.each do |term|
-            matcher.ranked_search(term, threshold)
+            matcher.search(term, threshold)
           end
         end
         measurements << time

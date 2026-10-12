@@ -157,11 +157,11 @@ first search to override the choice. An invalid value, or a backend the CPU does
 support, panics when the first `Searcher` is created (a `PanicException` in Python)
 instead of silently falling back.
 
-CI runs every backend under the [Intel SDE](https://www.intel.com/content/www/us/en/developer/articles/tool/software-development-emulator.html)
-emulator. To do the same locally:
+CI runs the Rust and Python test suites with every backend forced on hosted x86_64 Linux
+runners. To check a backend locally (the tests fail if it is not the one selected):
 
 ```sh
-CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUNNER="sde64 -skx --" SIMSTRING_RS_EXPECT_BACKEND=avx512 cargo test
+SIMSTRING_RS_BACKEND=avx512 SIMSTRING_RS_EXPECT_BACKEND=avx512 cargo test
 ```
 
 ## Contributing

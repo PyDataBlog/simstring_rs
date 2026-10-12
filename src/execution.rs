@@ -316,7 +316,7 @@ mod tests {
     fn selected_backend_matches_environment() {
         let selected = kernels().backend;
         assert!(selected.is_supported());
-        // CI sets this to prove the expected SIMD path really runs (e.g. under emulation).
+        // CI sets this to prove the expected SIMD path really runs.
         if let Ok(expected) = std::env::var("SIMSTRING_RS_EXPECT_BACKEND") {
             assert_eq!(selected.name(), expected);
         }

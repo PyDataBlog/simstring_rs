@@ -226,7 +226,7 @@ jobs:
         run: |
           for backend in native avx2 avx512; do
             echo "Running tests with backend: $backend"
-            echo: "----------------------------------------"
+            echo "----------------------------------------"
             SIMSTRING_RS_BACKEND=$backend SIMSTRING_RS_EXPECT_BACKEND=$backend cargo test --target ${{ matrix.target }}
           done
 

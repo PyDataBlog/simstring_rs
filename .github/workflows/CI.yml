@@ -141,6 +141,10 @@ jobs:
           - os: ubuntu-latest
             rust: stable
             target: x86_64-unknown-linux-gnu
+          # Minimum supported Rust version (stable AVX-512 intrinsics).
+          - os: ubuntu-latest
+            rust: "1.89"
+            target: x86_64-unknown-linux-gnu
           - os: ubuntu-latest
             rust: stable
             target: aarch64-unknown-linux-gnu
@@ -217,6 +221,12 @@ jobs:
         if: matrix.target == 'aarch64-unknown-linux-gnu'
         run: cross test --target ${{ matrix.target }} --verbose
 
+      - name: Run tests with forced execution backends
+        if: matrix.target == 'x86_64-unknown-linux-gnu'
+        run: |
+          SIMSTRING_RS_BACKEND=native SIMSTRING_RS_EXPECT_BACKEND=native cargo test --target ${{ matrix.target }}
+          SIMSTRING_RS_BACKEND=avx2 SIMSTRING_RS_EXPECT_BACKEND=avx2 cargo test --target ${{ matrix.target }}
+
       - name: Run Python binding tests
         shell: bash
         run: |
@@ -243,6 +253,84 @@ jobs:
 
       - name: Check documentation
         run: cargo doc --no-deps --document-private-items
+
+  # Hosted runners may lack AVX-512 (or AVX2), so run every backend under Intel SDE.
+  # SIMSTRING_RS_EXPECT_BACKEND makes the tests fail if the expected path is not selected.
+  simd_emulation:
+    name: SIMD backends under Intel SDE (${{ matrix.cpu }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - cpu: nhm # Nehalem: no AVX2
+            backend: native
+          - cpu: hsw # Haswell: AVX2
+            backend: avx2
+          - cpu: skx # Skylake-SP: AVX-512F
+            backend: avx512
+    env:
+      SDE_URL: https://downloadmirror.intel.com/924984/sde-external-10.13.1-2026-07-28-lin.tar.xz
+      SDE_SHA256: 94e97d623fec54385686e1e7ba65ebc9941748c05ee451423948334892bf2b50
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Set up cargo cache
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-sde-cargo-${{ hashFiles('Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-sde-cargo-
+
+      - name: Install Intel SDE
+        run: |
+          curl -sSfL "$SDE_URL" -o "$RUNNER_TEMP/sde.tar.xz"
+          echo "$SDE_SHA256  $RUNNER_TEMP/sde.tar.xz" | sha256sum -c -
+          mkdir "$RUNNER_TEMP/sde"
+          tar -xJf "$RUNNER_TEMP/sde.tar.xz" -C "$RUNNER_TEMP/sde" --strip-components=1
+          echo "SDE=$RUNNER_TEMP/sde/sde64 -${{ matrix.cpu }} --" >> "$GITHUB_ENV"
+
+      - name: Run Rust tests (auto-selected backend)
+        env:
+          SIMSTRING_RS_EXPECT_BACKEND: ${{ matrix.backend }}
+        run: |
+          export CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUNNER="$SDE"
+          cargo test
+          cargo test --release
+
+      - name: Run Rust tests (forced lower backends)
+        if: matrix.cpu == 'skx'
+        run: |
+          export CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUNNER="$SDE"
+          for backend in native avx2; do
+            SIMSTRING_RS_BACKEND=$backend SIMSTRING_RS_EXPECT_BACKEND=$backend cargo test --release
+          done
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+
+      - name: Run Python binding tests (forced backend)
+        env:
+          # Strict override: fails instead of falling back if the backend is unavailable.
+          SIMSTRING_RS_BACKEND: ${{ matrix.backend }}
+        run: |
+          pip install uv
+          uv venv --clear --python python
+          source .venv/bin/activate
+          uv pip install maturin pytest
+          rm -rf target/wheels
+          maturin build --release --interpreter python
+          uv pip install target/wheels/*.whl
+          $SDE python -m pytest tests/python/ -vv -p no:cacheprovider
 
   build_wheels:
     name: Build wheels on ${{ matrix.os }}

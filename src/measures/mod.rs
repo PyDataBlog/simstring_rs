@@ -38,25 +38,9 @@ impl<M: Measure + ?Sized> Measure for &M {
     }
 }
 
-// Helper function which computes the number of intersections between to vec of Spur
+// Size of the intersection of two sorted feature slices, using the selected backend.
 pub(crate) fn compute_intersection_size(x: &[Spur], y: &[Spur]) -> usize {
-    let mut intersection_size = 0;
-    let mut i = 0;
-    let mut j = 0;
-
-    while i < x.len() && j < y.len() {
-        match x[i].cmp(&y[j]) {
-            std::cmp::Ordering::Equal => {
-                intersection_size += 1;
-                i += 1;
-                j += 1;
-            }
-            std::cmp::Ordering::Less => i += 1,
-            std::cmp::Ordering::Greater => j += 1,
-        }
-    }
-
-    intersection_size
+    crate::execution::kernels().intersect(x, y)
 }
 pub use cosine::Cosine;
 pub use dice::Dice;

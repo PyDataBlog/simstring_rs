@@ -5,7 +5,11 @@
 [![PyPI version](https://badge.fury.io/py/simstring-rust.svg)](https://badge.fury.io/py/simstring-rust)
 [![Python versions](https://img.shields.io/pypi/pyversions/simstring-rust.svg)](https://pypi.org/project/simstring-rust)
 [![Documentation](https://docs.rs/simstring_rust/badge.svg)](https://docs.rs/simstring_rust)
+<<<<<<< Updated upstream
 [![Rust](https://img.shields.io/badge/rust-1.88%2B-blue.svg?maxAge=3600)](https://github.com/PyDataBlog/simstring_rs)
+=======
+[![Rust](https://img.shields.io/badge/rust-1.89%2B-blue.svg?maxAge=3600)](https://github.com/PyDataBlog/simstring_rs)
+>>>>>>> Stashed changes
 [![Codecov](https://img.shields.io/codecov/c/github/PyDataBlog/simstring_rs?token=XJM8O8TD4U)](https://codecov.io/gh/PyDataBlog/simstring_rs)
 
 A native Rust implementation of the CPMerge algorithm, designed for approximate string matching. This crate is particularly useful for natural language processing tasks that require the retrieval of strings/texts from very large corpora (big amounts of texts). Currently, this crate supports both character and word-based N-grams feature generation, with plans to allow custom user-defined feature generation methods.
@@ -28,7 +32,11 @@ A native Rust implementation of the CPMerge algorithm, designed for approximate 
 
 ## Installation
 
+<<<<<<< Updated upstream
 Requires Rust 1.88 or newer (edition 2024). Python bindings support Python 3.10+.
+=======
+Requires Rust 1.89 or newer (edition 2024). Python bindings support Python 3.10+.
+>>>>>>> Stashed changes
 See [Rust API migration](#rust-api-migration) for the read-only query engine's trait changes.
 
 Add `simstring_rust` to your `Cargo.toml`:
@@ -144,6 +152,29 @@ Unknown query features still contribute to similarity denominators. Duplicate
 insertions remain distinct results, and queries with no features return no results.
 Both search methods now apply exact score filtering at threshold boundaries.
 
+<<<<<<< Updated upstream
+=======
+## SIMD execution backends
+
+Search posting lookups and `Measure::similarity` intersections run on one of three
+backends, chosen once per process from the running CPU: AVX-512 (requires AVX-512F),
+then AVX2, then the portable native implementation. Non-x86_64 targets always use native.
+The same build (and Python wheel) contains all backends; no special `RUSTFLAGS` are needed.
+All backends produce identical results.
+
+Set `SIMSTRING_RS_BACKEND` to `auto` (default), `native`, `avx2` or `avx512` before the
+first search to override the choice. An invalid value, or a backend the CPU does not
+support, panics when the first `Searcher` is created (a `PanicException` in Python)
+instead of silently falling back.
+
+CI runs every backend under the [Intel SDE](https://www.intel.com/content/www/us/en/developer/articles/tool/software-development-emulator.html)
+emulator. To do the same locally:
+
+```sh
+CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUNNER="sde64 -skx --" SIMSTRING_RS_EXPECT_BACKEND=avx512 cargo test
+```
+
+>>>>>>> Stashed changes
 ## Contributing
 
 Contributions are welcome! Please open an issue or submit a pull request on GitHub.

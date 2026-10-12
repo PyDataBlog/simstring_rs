@@ -1,9 +1,28 @@
-use lasso::Rodeo;
+use lasso::{Rodeo, Spur};
 use simstring_rust::{
     CharacterNgrams, Cosine, Database, Dice, ExactMatch, FeatureExtractor, HashDb, Jaccard,
     Measure, Overlap, Searcher, WordNgrams,
 };
 use std::sync::Arc;
+
+/// Multiset intersection size, independent of the library's dispatched kernels.
+fn common(x: &[Spur], y: &[Spur]) -> usize {
+    let mut y = y.to_vec();
+    x.iter()
+        .filter(|f| {
+            y.iter()
+                .position(|g| g == *f)
+                .map(|i| y.swap_remove(i))
+                .is_some()
+        })
+        .count()
+}
+
+fn oracle<M: Measure>(measure: &M, x: &[Spur], y: &[Spur]) -> f64 {
+    let score = measure.similarity_from_counts(x.len(), y.len(), common(x, y));
+    assert_eq!(measure.similarity(x, y).to_bits(), score.to_bits());
+    score
+}
 
 fn compare<M: Measure + Copy>(extractor: Arc<dyn FeatureExtractor>, measure: M) {
     let mut corpus = vec![
@@ -14,6 +33,11 @@ fn compare<M: Measure + Copy>(extractor: Arc<dyn FeatureExtractor>, measure: M) 
         "café".into(),
         "a b a b".into(),
         "a b c".into(),
+        // Long inputs give feature sets and postings that span whole SIMD blocks.
+        "the quick brown fox jumps over the lazy dog".into(),
+        "the quick brown fox jumped over the lazy dogs".into(),
+        "a quick brown cat jumps over the lazy fox".into(),
+        "ab".repeat(24),
     ];
     for length in 1..=6 {
         for bits in 0..(1 << length) {
@@ -43,6 +67,9 @@ fn compare<M: Measure + Copy>(extractor: Arc<dyn FeatureExtractor>, measure: M) 
         "café 🍕",
         "a b unknown",
         "aaaaaaaaaaaaaa",
+        "the quick brown fox jumps over the lazy dog",
+        "quick brown foxes jump over lazy dogs",
+        "abababababababababababababababab",
     ]) {
         let query_features = extractor.features(query, &mut reference);
         let mut thresholds = vec![f64::from_bits(1), 0.01, 0.3, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0];
@@ -50,7 +77,7 @@ fn compare<M: Measure + Copy>(extractor: Arc<dyn FeatureExtractor>, measure: M) 
             candidate_features
                 .iter()
                 .step_by(11)
-                .map(|features| measure.similarity(&query_features, features))
+                .map(|features| oracle(&measure, &query_features, features))
                 .filter(|&score| score > 0.0),
         );
         for alpha in thresholds {
@@ -58,11 +85,11 @@ fn compare<M: Measure + Copy>(extractor: Arc<dyn FeatureExtractor>, measure: M) 
                 .iter()
                 .zip(&candidate_features)
                 .filter_map(|(text, features)| {
+                    let score = oracle(&measure, &query_features, features);
                     // Keep the established no-features search behavior.
                     if query_features.is_empty() || features.is_empty() {
                         return None;
                     }
-                    let score = measure.similarity(&query_features, features);
                     (score >= alpha).then_some((text.as_str(), score))
                 })
                 .collect();
@@ -99,7 +126,7 @@ fn parallel_size_buckets_preserve_duplicates() {
     let extractor = CharacterNgrams::default();
     let query = extractor.features("aaaa", &mut interner);
     for text in corpus {
-        let score = Cosine.similarity(&query, &extractor.features(text, &mut interner));
+        let score = oracle(&Cosine, &query, &extractor.features(text, &mut interner));
         if score >= 0.5 {
             expected.extend(std::iter::repeat_n((text, score), 12_500));
         }

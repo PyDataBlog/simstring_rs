@@ -38,6 +38,12 @@ fn setup_benchmark_environment() {
     });
 }
 
+fn backend_label() -> String {
+    let backend = env::var("SIMSTRING_RS_BACKEND").unwrap_or_default();
+    let backend = if backend.is_empty() { "auto" } else { &backend };
+    format!("simstring-rust (rust, {backend})")
+}
+
 fn bench_insert(results: &mut Vec<BenchmarkResult>) {
     setup_benchmark_environment();
     let companies = load_companies();
@@ -77,7 +83,7 @@ fn bench_insert(results: &mut Vec<BenchmarkResult>) {
 
         results.push(BenchmarkResult {
             language: "rust".to_string(),
-            backend: "simstring-rust (native)".to_string(),
+            backend: backend_label(),
             benchmark: "insert".to_string(),
             parameters: serde_json::json!({ "ngram_size": ngram_size }),
             stats: Stats {
@@ -136,7 +142,7 @@ fn bench_search(results: &mut Vec<BenchmarkResult>) {
 
             results.push(BenchmarkResult {
                 language: "rust".to_string(),
-                backend: "simstring-rust (native)".to_string(),
+                backend: backend_label(),
                 benchmark: "search".to_string(),
                 parameters: serde_json::json!({ "ngram_size": ngram_size, "threshold": threshold }),
                 stats: Stats {
@@ -163,6 +169,9 @@ fn load_companies() -> Vec<String> {
 }
 
 fn main() {
+    // Fail fast if SIMSTRING_RS_BACKEND is invalid or unsupported on this CPU.
+    let db = HashDb::new(Arc::new(CharacterNgrams::default()));
+    let _ = Searcher::new(&db, Cosine);
     let mut results = Vec::new();
     bench_insert(&mut results);
     bench_search(&mut results);

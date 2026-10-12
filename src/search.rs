@@ -21,6 +21,8 @@ pub struct Searcher<'db, M: Measure> {
 
 impl<'db, M: Measure> Searcher<'db, M> {
     pub fn new(db: &'db dyn Database, measure: M) -> Self {
+        // Select the execution backend now so an invalid override fails before searching.
+        crate::execution::kernels();
         Self { db, measure }
     }
 
@@ -142,13 +144,14 @@ impl<'db, M: Measure> Searcher<'db, M> {
             candidates.extend_from_slice(ids);
         }
         candidates.sort_unstable();
+        let kernels = crate::execution::kernels();
         candidates
             .chunk_by(|a, b| a == b)
             .filter_map(|occurrences| {
                 let id = occurrences[0];
                 let mut count = occurrences.len();
                 for (index, ids) in postings[prefix_len..].iter().enumerate() {
-                    count += usize::from(ids.binary_search(&id).is_ok());
+                    count += usize::from(kernels.contains(ids, id));
                     if count + postings.len() - prefix_len - index - 1 < tau {
                         return None;
                     }

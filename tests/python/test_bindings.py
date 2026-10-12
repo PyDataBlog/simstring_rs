@@ -83,6 +83,31 @@ class TestSimstringBindings:
         self.db.insert("apple🦀")
         assert self.searcher.ranked_search("apple🦀", 1.0) == [("apple🦀", 1.0)]
 
+    def test_long_inputs_match_python_reference(self):
+        # Long strings and many duplicates produce feature sets and postings that span
+        # whole SIMD blocks.
+        extractor = CharacterNgrams(n=3, endmarker="$")
+        db = HashDb(extractor)
+        words = ["acme", "acne", "apex", "axle"]
+        corpus = [f"{words[i % 4]} company {i % 7} international holdings" for i in range(200)]
+        for text in corpus:
+            db.insert(text)
+        searcher = Searcher(db, Cosine())
+        query = set(extractor.apply("acme company 3 international holdings"))
+        for alpha in [0.5, 0.8, 0.95, 1.0]:
+            expected = {}
+            for text in corpus:
+                features = set(extractor.apply(text))
+                score = len(query & features) / (len(query) * len(features)) ** 0.5
+                if score >= alpha - 1e-12:
+                    expected.setdefault(text, []).append(score)
+            actual = {}
+            for text, score in searcher.ranked_search("acme company 3 international holdings", alpha):
+                actual.setdefault(text, []).append(score)
+            assert actual.keys() == expected.keys()
+            for text, scores in actual.items():
+                assert scores == pytest.approx(expected[text])
+
     def test_character_ngram_apply(self):
         extractor = CharacterNgrams(n=2, endmarker="$")
         features = extractor.apply("apple")

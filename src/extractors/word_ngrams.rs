@@ -1,5 +1,6 @@
 use crate::FeatureExtractor;
 use lasso::{Rodeo, Spur};
+use std::fmt::Write;
 
 #[derive(Clone)]
 pub struct WordNgrams {
@@ -30,25 +31,51 @@ impl FeatureExtractor for WordNgrams {
             return vec![];
         }
 
-        let tokens = text.split(&self.splitter).filter(|s| !s.is_empty());
+        let tokens: Vec<&str> = text.split(&self.splitter).collect();
+        let mut padded_tokens = Vec::with_capacity(tokens.len() + 2);
+        padded_tokens.push(self.padder.as_str());
+        padded_tokens.extend(tokens.iter().copied());
+        padded_tokens.push(self.padder.as_str());
 
-        // an iterator that includes padding
-        let padded_tokens_iter = std::iter::once(self.padder.as_str())
-            .chain(tokens)
-            .chain(std::iter::once(self.padder.as_str()));
+        if padded_tokens.len() < self.n {
+            return vec![];
+        }
 
-        // Use a buffer to collect tokens for each n-gram
-        let mut buffer: Vec<&str> = Vec::with_capacity(self.n);
-        let mut ngrams = Vec::new();
+        let mut ngrams = Vec::with_capacity(padded_tokens.len().saturating_sub(self.n) + 1);
 
-        for token in padded_tokens_iter {
-            buffer.push(token);
-            if buffer.len() == self.n {
-                ngrams.push(buffer.join(" "));
-                buffer.remove(0);
-            }
+        for window in padded_tokens.windows(self.n) {
+            ngrams.push(encode_word_window(window));
         }
 
         super::append_feature_counts(interner, ngrams)
     }
+}
+
+fn encode_word_window(window: &[&str]) -> String {
+    let estimated_capacity: usize = window
+        .iter()
+        .map(|token| token.len() + digits(token.len()) + 1)
+        .sum::<usize>()
+        .saturating_sub(1);
+
+    let mut encoded = String::with_capacity(estimated_capacity);
+
+    for (index, token) in window.iter().enumerate() {
+        if index > 0 {
+            encoded.push('|');
+        }
+        let _ = write!(&mut encoded, "{}:", token.len());
+        encoded.push_str(token);
+    }
+
+    encoded
+}
+
+fn digits(mut value: usize) -> usize {
+    let mut digits = 1;
+    while value >= 10 {
+        value /= 10;
+        digits += 1;
+    }
+    digits
 }

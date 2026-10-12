@@ -161,6 +161,7 @@ fn supported(backend: &str) -> bool {
 }
 
 #[test]
+#[cfg(target_arch = "x86_64")]
 fn backend_override() {
     for backend in ["", "auto", "native", "avx2", "avx512", "bogus"] {
         let output = run_child(backend);

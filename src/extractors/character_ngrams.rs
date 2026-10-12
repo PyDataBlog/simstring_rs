@@ -1,17 +1,17 @@
 use crate::FeatureExtractor;
-use lasso::{Rodeo, Spur};
+use rustc_hash::FxHashMap;
 
 #[derive(Clone)]
 pub struct CharacterNgrams {
     n: usize,
-    endmarker: String,
+    padding: String,
 }
 
 impl CharacterNgrams {
     pub fn new(n: usize, endmarker: &str) -> Self {
         Self {
             n,
-            endmarker: endmarker.to_string(),
+            padding: endmarker.repeat(n.saturating_sub(1)),
         }
     }
 }
@@ -23,41 +23,43 @@ impl Default for CharacterNgrams {
 }
 
 impl FeatureExtractor for CharacterNgrams {
-    fn features(&self, text: &str, interner: &mut Rodeo) -> Vec<Spur> {
+    fn visit_features(&self, text: &str, visitor: &mut dyn FnMut(&str)) {
         if self.n == 0 {
-            return vec![];
+            return;
         }
+        let mut padded = String::with_capacity(text.len() + 2 * self.padding.len());
+        padded.push_str(&self.padding);
+        padded.push_str(text);
+        padded.push_str(&self.padding);
 
-        // Pre-calculate capacity to avoid reallocations
-        let text_len = text.chars().count();
-        let padding_len = self.n.saturating_sub(1);
-        let total_len = text_len + 2 * padding_len;
+        // Borrow n-grams directly from the padded text, avoiding an allocation per gram.
+        let mut counter: FxHashMap<&str, usize> = FxHashMap::default();
+        let mut counted = String::new();
+        let mut number = itoa::Buffer::new();
+        let mut emit = |start, end| {
+            let gram = &padded[start..end];
+            let count = counter.entry(gram).or_default();
+            *count += 1;
+            counted.clear();
+            counted.push_str(gram);
+            counted.push_str(number.format(*count));
+            visitor(&counted);
+        };
 
-        if total_len < self.n {
-            return vec![];
-        }
-
-        let expected_ngrams = total_len - self.n + 1;
-        let mut ngrams = Vec::with_capacity(expected_ngrams);
-
-        let padding = self.endmarker.repeat(padding_len);
-
-        // collect chars once, then slice
-        let mut all_chars = Vec::with_capacity(total_len);
-        all_chars.extend(padding.chars());
-        all_chars.extend(text.chars());
-        all_chars.extend(padding.chars());
-
-        // Generate n-grams using efficient windowing
-        for window in all_chars.windows(self.n) {
-            // Pre-allocate string with known capacity
-            let mut ngram = String::with_capacity(self.n * 4); // Assume max 4 bytes per char
-            for &ch in window {
-                ngram.push(ch);
+        if padded.is_ascii() {
+            // ASCII byte boundaries are also character boundaries.
+            for start in 0..padded.len().saturating_add(1).saturating_sub(self.n) {
+                emit(start, start + self.n);
             }
-            ngrams.push(ngram);
+        } else {
+            let boundaries: Vec<usize> = padded
+                .char_indices()
+                .map(|(i, _)| i)
+                .chain(std::iter::once(padded.len()))
+                .collect();
+            for start in 0..boundaries.len().saturating_sub(self.n) {
+                emit(boundaries[start], boundaries[start + self.n]);
+            }
         }
-
-        super::append_feature_counts(interner, ngrams)
     }
 }

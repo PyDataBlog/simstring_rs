@@ -1,16 +1,17 @@
 use crate::database::{Database, StringId};
 use crate::extractors::FeatureExtractor;
 use lasso::{Rodeo, Spur};
-use rustc_hash::{FxHashMap, FxHashSet};
+use rustc_hash::FxHashMap;
 use std::fmt;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 pub struct HashDb {
     feature_extractor: Arc<dyn FeatureExtractor>,
     pub strings: Vec<String>,
     string_features: Vec<Vec<Spur>>,
-    feature_map: FxHashMap<usize, FxHashMap<Spur, FxHashSet<StringId>>>,
-    interner: Arc<Mutex<Rodeo>>,
+    feature_map: FxHashMap<usize, FxHashMap<Spur, Vec<StringId>>>,
+    feature_sizes: Vec<usize>,
+    interner: Rodeo,
 }
 
 impl fmt::Debug for HashDb {
@@ -20,7 +21,7 @@ impl fmt::Debug for HashDb {
             .values()
             .map(|size_map| size_map.len())
             .sum();
-        let interner = self.interner.lock().unwrap();
+        let interner = &self.interner;
 
         f.debug_struct("HashDb")
             .field("num_strings", &self.strings.len())
@@ -38,7 +39,8 @@ impl HashDb {
             strings: Vec::new(),
             string_features: Vec::new(),
             feature_map: FxHashMap::default(),
-            interner: Arc::new(Mutex::new(Rodeo::default())),
+            feature_sizes: Vec::new(),
+            interner: Rodeo::default(),
         }
     }
 
@@ -53,18 +55,19 @@ impl HashDb {
 
 impl Database for HashDb {
     fn insert(&mut self, text: String) {
-        let mut interner = self.interner.lock().unwrap();
-        let features = self.feature_extractor.features(&text, &mut interner);
+        let features = self.feature_extractor.features(&text, &mut self.interner);
         let size = features.len();
         let string_id = self.strings.len();
 
         self.strings.push(text);
-        self.string_features.push(features.clone());
-
-        let size_map = self.feature_map.entry(size).or_default();
-        for feature in features {
-            size_map.entry(feature).or_default().insert(string_id);
+        if let Err(index) = self.feature_sizes.binary_search(&size) {
+            self.feature_sizes.insert(index, size);
         }
+        let size_map = self.feature_map.entry(size).or_default();
+        for &feature in &features {
+            size_map.entry(feature).or_default().push(string_id);
+        }
+        self.string_features.push(features);
     }
 
     fn clear(&mut self) {
@@ -72,19 +75,23 @@ impl Database for HashDb {
         self.string_features.clear();
         self.feature_map.clear();
         // clear the interner to release memory
-        self.interner.lock().unwrap().clear();
+        self.interner.clear();
+        self.feature_sizes.clear();
     }
 
-    fn lookup_strings(&self, size: usize, feature: Spur) -> Option<&FxHashSet<StringId>> {
-        self.feature_map.get(&size)?.get(&feature)
+    fn lookup_strings(&self, size: usize, feature: Spur) -> Option<&[StringId]> {
+        self.feature_map
+            .get(&size)?
+            .get(&feature)
+            .map(Vec::as_slice)
     }
 
     fn get_string(&self, id: StringId) -> Option<&str> {
         self.strings.get(id).map(AsRef::as_ref)
     }
 
-    fn get_features(&self, id: StringId) -> Option<&Vec<Spur>> {
-        self.string_features.get(id)
+    fn get_features(&self, id: StringId) -> Option<&[Spur]> {
+        self.string_features.get(id).map(Vec::as_slice)
     }
 
     fn feature_extractor(&self) -> &dyn FeatureExtractor {
@@ -92,11 +99,15 @@ impl Database for HashDb {
     }
 
     fn max_feature_len(&self) -> usize {
-        self.feature_map.keys().max().copied().unwrap_or(0)
+        self.feature_sizes.last().copied().unwrap_or(0)
     }
 
-    fn interner(&self) -> Arc<Mutex<Rodeo>> {
-        Arc::clone(&self.interner)
+    fn interner(&self) -> &Rodeo {
+        &self.interner
+    }
+
+    fn feature_sizes(&self) -> &[usize] {
+        &self.feature_sizes
     }
 
     fn total_strings(&self) -> usize {

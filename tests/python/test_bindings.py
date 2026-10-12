@@ -6,6 +6,7 @@ from simstring_rust.errors import SearchError
 from simstring_rust.extractors import CharacterNgrams, WordNgrams, CustomExtractor
 from simstring_rust.measures import Cosine
 from simstring_rust.searcher import Searcher
+from concurrent.futures import ThreadPoolExecutor
 
 
 class TestSimstringBindings:
@@ -69,6 +70,19 @@ class TestSimstringBindings:
         with pytest.raises(SearchError, match=r"Invalid threshold: 0(\.0)?"):
             self.searcher.search("test", 0.0)
 
+    def test_concurrent_searches(self):
+        queries = ["apple", "apply", "unknown 🦀", "banana"] * 100
+        expected = [self.searcher.ranked_search(query, 0.6) for query in queries]
+        with ThreadPoolExecutor(max_workers=8) as executor:
+            actual = list(executor.map(lambda query: self.searcher.ranked_search(query, 0.6), queries))
+        assert actual == expected
+
+    def test_unknown_features_and_reinsertion(self):
+        assert self.searcher.search("apple🦀", 1.0) == []
+        self.db.clear()
+        self.db.insert("apple🦀")
+        assert self.searcher.ranked_search("apple🦀", 1.0) == [("apple🦀", 1.0)]
+
     def test_character_ngram_apply(self):
         extractor = CharacterNgrams(n=2, endmarker="$")
         features = extractor.apply("apple")
@@ -108,6 +122,22 @@ class TestSimstringBindings:
         results = searcher.search("foo", 0.8)
 
         assert results == ["foo"]
+
+    def test_custom_extractor_concurrent_queries(self):
+        class TokenExtractor:
+            def apply(self, text):
+                yield from text.split()
+
+        db = HashDb(CustomExtractor(TokenExtractor()))
+        db.insert("foo foo bar")
+        db.insert("foo bar")
+        searcher = Searcher(db, Cosine())
+        queries = ["foo foo bar", "foo bar", "foo unknown", "🦀"] * 25
+        expected = [searcher.ranked_search(query, 0.5) for query in queries]
+        assert searcher.ranked_search("foo unknown", 0.5) == [("foo bar", 0.5)]
+        with ThreadPoolExecutor(max_workers=4) as executor:
+            actual = list(executor.map(lambda query: searcher.ranked_search(query, 0.5), queries))
+        assert actual == expected
 
     def test_word_ngram_edge_cases(self):
         # Empty string

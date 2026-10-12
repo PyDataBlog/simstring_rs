@@ -1,9 +1,8 @@
 use lasso::{Rodeo, Spur};
-use rustc_hash::FxHashSet;
 use simstring_rust::database::{Database, HashDb, StringId};
 use simstring_rust::extractors::{CharacterNgrams, FeatureExtractor};
 use simstring_rust::measures::{Cosine, Dice, ExactMatch, Jaccard, Measure, Overlap};
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 fn approx_eq(a: f64, b: f64) -> bool {
     (a - b).abs() < 1e-9
@@ -428,13 +427,13 @@ struct MockDatabase;
 impl Database for MockDatabase {
     fn insert(&mut self, _text: String) {}
     fn clear(&mut self) {}
-    fn lookup_strings(&self, _size: usize, _feature: Spur) -> Option<&FxHashSet<StringId>> {
+    fn lookup_strings(&self, _size: usize, _feature: Spur) -> Option<&[StringId]> {
         None
     }
     fn get_string(&self, _id: StringId) -> Option<&str> {
         None
     }
-    fn get_features(&self, _id: StringId) -> Option<&Vec<Spur>> {
+    fn get_features(&self, _id: StringId) -> Option<&[Spur]> {
         None
     }
     fn feature_extractor(&self) -> &dyn FeatureExtractor {
@@ -443,8 +442,11 @@ impl Database for MockDatabase {
     fn max_feature_len(&self) -> usize {
         100
     }
-    fn interner(&self) -> Arc<Mutex<Rodeo>> {
+    fn interner(&self) -> &Rodeo {
         unimplemented!()
+    }
+    fn feature_sizes(&self) -> &[usize] {
+        &[]
     }
     fn total_strings(&self) -> usize {
         0

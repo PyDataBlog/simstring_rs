@@ -12,8 +12,7 @@ fn test_insert_and_lookup_single_string() {
 
     let features_spurs = db.get_features(string_id).unwrap();
 
-    let interner_arc = db.interner();
-    let interner = interner_arc.lock().unwrap();
+    let interner = db.interner();
 
     let features_strings: Vec<String> = features_spurs
         .iter()
@@ -50,9 +49,7 @@ fn test_lookup_separates_by_size() {
     let size_1 = features_1.len();
     assert_ne!(size_0, size_1);
 
-    // Fix: Bind the Arc to extend its lifetime
-    let interner_arc = db.interner();
-    let interner = interner_arc.lock().unwrap();
+    let interner = db.interner();
     let common_feature_spur = interner.get("#h1").unwrap();
 
     let ids_for_size_0 = db.lookup_strings(size_0, common_feature_spur).unwrap();
@@ -74,8 +71,7 @@ fn test_insert_multiple_strings_same_size() {
 
     let feature_size = db.get_features(0).unwrap().len();
 
-    let interner_arc = db.interner();
-    let interner = interner_arc.lock().unwrap();
+    let interner = db.interner();
 
     let at1_spur = interner.get("at1").unwrap();
     let ids = db.lookup_strings(feature_size, at1_spur).unwrap();
@@ -139,7 +135,7 @@ fn test_db_clear() {
     // Ensure DB is now empty
     assert_eq!(db.get_string(0), None);
     assert_eq!(db.max_feature_len(), 0);
-    assert_eq!(db.interner().lock().unwrap().len(), 0);
+    assert_eq!(db.interner().len(), 0);
 }
 
 #[test]

@@ -1,7 +1,7 @@
+use simstring_rust::Searcher;
 use simstring_rust::database::HashDb;
 use simstring_rust::extractors::CharacterNgrams;
 use simstring_rust::measures::Cosine;
-use simstring_rust::Searcher;
 
 use std::sync::Arc;
 use std::time::Instant;

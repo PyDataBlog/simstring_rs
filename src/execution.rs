@@ -15,16 +15,16 @@ type ContainsFn = unsafe fn(&[StringId], StringId) -> bool;
 type IntersectFn = unsafe fn(&[Spur], &[Spur]) -> usize;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) enum Backend {
+pub enum Backend {
     Native,
     Avx2,
     Avx512,
 }
 
 impl Backend {
-    const ALL: [Self; 3] = [Self::Native, Self::Avx2, Self::Avx512];
+    pub const ALL: [Self; 3] = [Self::Native, Self::Avx2, Self::Avx512];
 
-    fn name(self) -> &'static str {
+    pub fn name(self) -> &'static str {
         match self {
             Self::Native => "native",
             Self::Avx2 => "avx2",
@@ -32,7 +32,7 @@ impl Backend {
         }
     }
 
-    fn is_supported(self) -> bool {
+    pub fn is_supported(self) -> bool {
         match self {
             Self::Native => true,
             #[cfg(target_arch = "x86_64")]
@@ -46,7 +46,7 @@ impl Backend {
 }
 
 /// Resolves a requested backend name against the available CPU features.
-fn resolve(requested: &str, supported: impl Fn(Backend) -> bool) -> Result<Backend, String> {
+pub fn resolve(requested: &str, supported: impl Fn(Backend) -> bool) -> Result<Backend, String> {
     let requested = requested.to_ascii_lowercase();
     if requested.is_empty() || requested == "auto" {
         let best = Backend::ALL.into_iter().rev().find(|&b| supported(b));
@@ -64,8 +64,7 @@ fn resolve(requested: &str, supported: impl Fn(Backend) -> bool) -> Result<Backe
 }
 
 /// The selected kernels. Only constructible for backends the CPU supports.
-pub(crate) struct Kernels {
-    #[cfg(test)]
+pub struct Kernels {
     backend: Backend,
     contains: ContainsFn,
     intersect: IntersectFn,
@@ -74,7 +73,7 @@ pub(crate) struct Kernels {
 impl Kernels {
     /// # Safety
     /// The running CPU must support `backend`.
-    unsafe fn new(backend: Backend) -> Self {
+    pub unsafe fn new(backend: Backend) -> Self {
         let (contains, intersect): (ContainsFn, IntersectFn) = match backend {
             Backend::Native => (contains_native, intersect_native),
             #[cfg(target_arch = "x86_64")]
@@ -85,23 +84,26 @@ impl Kernels {
             _ => unreachable!("SIMD backends are never supported on this target"),
         };
         Self {
-            #[cfg(test)]
             backend,
             contains,
             intersect,
         }
     }
 
+    pub fn backend(&self) -> Backend {
+        self.backend
+    }
+
     /// Whether the sorted slice `ids` contains `id`.
     #[inline]
-    pub(crate) fn contains(&self, ids: &[StringId], id: StringId) -> bool {
+    pub fn contains(&self, ids: &[StringId], id: StringId) -> bool {
         // SAFETY: `Kernels::new` requires CPU support for the selected backend.
         unsafe { (self.contains)(ids, id) }
     }
 
     /// Size of the multiset intersection of two sorted slices.
     #[inline]
-    pub(crate) fn intersect(&self, x: &[Spur], y: &[Spur]) -> usize {
+    pub fn intersect(&self, x: &[Spur], y: &[Spur]) -> usize {
         // SAFETY: as for `contains`.
         unsafe { (self.intersect)(x, y) }
     }
@@ -111,7 +113,7 @@ impl Kernels {
 ///
 /// # Panics
 /// If `SIMSTRING_RS_BACKEND` is invalid or names a backend this CPU does not support.
-pub(crate) fn kernels() -> &'static Kernels {
+pub fn kernels() -> &'static Kernels {
     static KERNELS: OnceLock<Kernels> = OnceLock::new();
     KERNELS.get_or_init(|| {
         let requested = std::env::var_os(ENV_VAR).unwrap_or_default();
@@ -122,11 +124,11 @@ pub(crate) fn kernels() -> &'static Kernels {
     })
 }
 
-fn contains_native(ids: &[StringId], id: StringId) -> bool {
+pub fn contains_native(ids: &[StringId], id: StringId) -> bool {
     ids.binary_search(&id).is_ok()
 }
 
-fn intersect_native(x: &[Spur], y: &[Spur]) -> usize {
+pub fn intersect_native(x: &[Spur], y: &[Spur]) -> usize {
     let mut intersection_size = 0;
     let mut i = 0;
     let mut j = 0;
@@ -272,130 +274,5 @@ mod x86 {
             lanes,
             _mm512_set1_epi32(key as i32),
         ))
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use lasso::Key;
-
-    fn supported() -> Vec<Kernels> {
-        Backend::ALL
-            .into_iter()
-            .filter(|b| b.is_supported())
-            // SAFETY: filtered by runtime detection.
-            .map(|b| unsafe { Kernels::new(b) })
-            .collect()
-    }
-
-    /// Deterministic LCG; avoids a random-number dependency.
-    fn lcg(seed: &mut u64) -> u64 {
-        *seed = seed
-            .wrapping_mul(6_364_136_223_846_793_005)
-            .wrapping_add(1_442_695_040_888_963_407);
-        *seed >> 33
-    }
-
-    #[test]
-    fn resolve_prefers_widest_supported_backend() {
-        let only = |set: &'static [Backend]| move |b| set.contains(&b);
-        use Backend::*;
-        assert_eq!(resolve("", only(&[Native, Avx2, Avx512])), Ok(Avx512));
-        assert_eq!(resolve("auto", only(&[Native, Avx2])), Ok(Avx2));
-        assert_eq!(resolve("AUTO", only(&[Native])), Ok(Native));
-        assert_eq!(resolve("native", only(&[Native, Avx2, Avx512])), Ok(Native));
-        assert_eq!(resolve("Avx2", only(&[Native, Avx2, Avx512])), Ok(Avx2));
-        assert_eq!(resolve("avx512", only(&[Native, Avx2, Avx512])), Ok(Avx512));
-        assert!(resolve("avx512", only(&[Native, Avx2])).is_err());
-        assert!(resolve("avx2", only(&[Native])).is_err());
-        assert!(resolve("sse", only(&[Native, Avx2, Avx512])).is_err());
-    }
-
-    #[test]
-    fn selected_backend_matches_environment() {
-        let selected = kernels().backend;
-        assert!(selected.is_supported());
-        // CI sets this to prove the expected SIMD path really runs.
-        if let Ok(expected) = std::env::var("SIMSTRING_RS_EXPECT_BACKEND") {
-            assert_eq!(selected.name(), expected);
-        }
-    }
-
-    #[test]
-    fn spur_order_matches_its_public_value() {
-        let keys: Vec<Spur> = [0, 1, 2, 0xFFFF, u32::MAX as usize - 2]
-            .into_iter()
-            .map(|n| Spur::try_from_usize(n).unwrap())
-            .collect();
-        for pair in keys.windows(2) {
-            assert!(pair[0] < pair[1]);
-            assert!(pair[0].into_inner().get() < pair[1].into_inner().get());
-        }
-    }
-
-    #[test]
-    fn contains_matches_native() {
-        let mut seed = 1;
-        for kernels in supported() {
-            for len in (0..=40).chain([63, 64, 65, 1000]) {
-                for base in [0, u32::MAX as usize - 20, usize::MAX - 4 * len - 8] {
-                    let mut ids: Vec<_> = (0..len).map(|i| base + 2 * i + 1).collect();
-                    if len > 0 && lcg(&mut seed).is_multiple_of(2) {
-                        ids.retain(|_| !lcg(&mut seed).is_multiple_of(4));
-                    }
-                    for offset in 0..ids.len().min(17) + 1 {
-                        let slice = &ids[offset..];
-                        for probe in (base..base + 2 * len + 3).chain([0, usize::MAX]) {
-                            assert_eq!(
-                                kernels.contains(slice, probe),
-                                contains_native(slice, probe),
-                                "{:?} len={} probe={probe}",
-                                kernels.backend,
-                                slice.len()
-                            );
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    #[test]
-    fn intersect_matches_native() {
-        let spur = |n: u64| Spur::try_from_usize(n as usize).unwrap();
-        let mut seed = 7;
-        for kernels in supported() {
-            for case in 0..3000 {
-                let mut set = |len: u64, range: u64, high: u64| {
-                    let mut v: Vec<_> = (0..len)
-                        .map(|_| spur(high + lcg(&mut seed) % range))
-                        .collect();
-                    v.sort_unstable();
-                    v
-                };
-                let range = 1 + case % 97;
-                let high = if case % 5 == 0 {
-                    u32::MAX as u64 - 200
-                } else {
-                    0
-                };
-                let x = set(case % 41, range, high);
-                let y = set((case * 7) % 67, range, high);
-                let mut unique = y.clone();
-                unique.dedup();
-                for (a, b) in [(&x, &y), (&y, &x), (&unique, &unique), (&x, &unique)] {
-                    for offset in 0..b.len().min(17) {
-                        assert_eq!(
-                            kernels.intersect(a, &b[offset..]),
-                            intersect_native(a, &b[offset..]),
-                            "{:?} a={a:?} b={:?}",
-                            kernels.backend,
-                            &b[offset..]
-                        );
-                    }
-                }
-            }
-        }
     }
 }

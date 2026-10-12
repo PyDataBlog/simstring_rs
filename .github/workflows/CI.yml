@@ -98,8 +98,7 @@ jobs:
           file_pattern: BENCHMARKS.md
 
       - name: Post benchmark results to PR
-        # Fork PRs get a read-only GITHUB_TOKEN, so commenting would fail with 403.
-        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        if: github.event_name == 'pull_request'
         uses: actions/github-script@v9
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}

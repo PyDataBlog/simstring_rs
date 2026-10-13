@@ -52,15 +52,14 @@ fn contains_matches_native() {
     let mut seed = 1;
     for kernels in supported_kernels() {
         for len in (0..=40).chain([63, 64, 65, 1000]) {
-            // The middle base straddles the i32 sign boundary.
-            for base in [0, (1 << 31) - 20, u32::MAX - 4 * len - 8] {
-                let mut ids: Vec<u32> = (0..len).map(|i| base + 2 * i + 1).collect();
+            for base in [0, u32::MAX as usize - 20, usize::MAX - 4 * len - 8] {
+                let mut ids: Vec<_> = (0..len).map(|i| base + 2 * i + 1).collect();
                 if len > 0 && lcg(&mut seed).is_multiple_of(2) {
                     ids.retain(|_| !lcg(&mut seed).is_multiple_of(4));
                 }
                 for offset in 0..ids.len().min(17) + 1 {
                     let slice = &ids[offset..];
-                    for probe in (base..base + 2 * len + 3).chain([0, u32::MAX]) {
+                    for probe in (base..base + 2 * len + 3).chain([0, usize::MAX]) {
                         assert_eq!(
                             kernels.contains(slice, probe),
                             contains_native(slice, probe),

@@ -4,7 +4,21 @@ use crate::measures::Measure;
 use lasso::Spur;
 use rayon::prelude::*;
 use rustc_hash::FxHashSet;
+use std::cell::RefCell;
 use thiserror::Error;
+
+/// Per-thread join state, reused so a query never allocates O(total strings).
+#[derive(Default)]
+struct Scratch {
+    /// Prefix-list occurrences per string ID. All zero between joins.
+    counts: Vec<u32>,
+    /// IDs with a non-zero count in the current join.
+    touched: Vec<StringId>,
+}
+
+thread_local! {
+    static SCRATCH: RefCell<Scratch> = RefCell::default();
+}
 
 #[derive(Error, Debug, PartialEq)]
 pub enum SearchError {
@@ -139,23 +153,50 @@ impl<'db, M: Measure> Searcher<'db, M> {
         // Every match must occur in this prefix: only tau - 1 lists remain outside it.
         // Missing query features cannot contribute and need not enlarge the prefix.
         let prefix_len = postings.len() - tau + 1;
-        let mut candidates = Vec::new();
-        for ids in &postings[..prefix_len] {
-            candidates.extend_from_slice(ids);
-        }
-        candidates.sort_unstable();
+        let (prefix, rest) = postings.split_at(prefix_len);
         let kernels = crate::execution::kernels();
-        candidates
-            .chunk_by(|a, b| a == b)
-            .filter_map(|occurrences| {
-                let id = occurrences[0];
-                let mut count = occurrences.len();
-                for (index, ids) in postings[prefix_len..].iter().enumerate() {
-                    count += usize::from(kernels.contains(ids, id));
-                    if count + postings.len() - prefix_len - index - 1 < tau {
-                        return None;
+        // Only library code runs while the scratch is borrowed; the measure is called
+        // afterwards, so a re-entrant or panicking measure cannot see a dirty scratch.
+        let survivors: Vec<(StringId, usize)> = SCRATCH.with_borrow_mut(|scratch| {
+            let Scratch { counts, touched } = scratch;
+            // Lists are sorted, so their last IDs bound every counter used below.
+            let max_id = prefix.iter().map(|ids| ids[ids.len() - 1]).max();
+            let needed = max_id.map_or(0, |id| id + 1);
+            if counts.len() < needed {
+                counts.resize(needed, 0);
+            }
+            // ScanCount: count prefix occurrences without materialising and sorting
+            // the concatenated lists. `touched` records each ID once.
+            for ids in prefix {
+                for &id in *ids {
+                    if counts[id] == 0 {
+                        touched.push(id);
                     }
+                    counts[id] += 1;
                 }
+            }
+            touched.sort_unstable();
+            let survivors = touched
+                .iter()
+                .filter_map(|&id| {
+                    // Taking the count also restores the all-zero invariant.
+                    let mut count = std::mem::take(&mut counts[id]) as usize;
+                    for (index, ids) in rest.iter().enumerate() {
+                        count += usize::from(kernels.contains(ids, id));
+                        // Even if every remaining list matched, tau is out of reach.
+                        if count + rest.len() - index - 1 < tau {
+                            return None;
+                        }
+                    }
+                    Some((id, count))
+                })
+                .collect();
+            touched.clear();
+            survivors
+        });
+        survivors
+            .into_iter()
+            .filter_map(|(id, count)| {
                 let score = self.measure.similarity_from_counts(query_size, size, count);
                 (score >= alpha).then_some((id, score))
             })

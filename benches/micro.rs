@@ -3,8 +3,10 @@
 //! `cargo bench --bench micro -- [--save FILE] [--baseline FILE]`
 //!
 //! End-to-end rows use the backend selected by `SIMSTRING_RS_BACKEND`; kernel rows run
-//! every supported backend interleaved in this process. Values are medians in the unit
-//! given by the row name; `--baseline` prints the change against an earlier `--save`.
+//! every supported backend interleaved in this process. Values are the fastest sample in
+//! the unit given by the row name: these loops are deterministic, so interference only
+//! ever adds time and the minimum is the most stable estimate. `--baseline` prints the
+//! change against an earlier `--save`.
 
 use serde_json::{Map, Value};
 use simstring_rust::execution::{Backend, Kernels, kernels};
@@ -13,9 +15,8 @@ use std::path::Path;
 use std::sync::Arc;
 use std::time::Instant;
 
-fn median(mut samples: Vec<f64>) -> f64 {
-    samples.sort_unstable_by(f64::total_cmp);
-    samples[samples.len() / 2]
+fn fastest(samples: Vec<f64>) -> f64 {
+    samples.into_iter().fold(f64::INFINITY, f64::min)
 }
 
 fn end_to_end(rows: &mut Vec<(String, f64)>) {
@@ -42,7 +43,7 @@ fn end_to_end(rows: &mut Vec<(String, f64)>) {
                 start.elapsed().as_secs_f64() * 1e3
             };
             (0..3).for_each(|_| _ = run());
-            let ms = median((0..30).map(|_| run()).collect());
+            let ms = fastest((0..30).map(|_| run()).collect());
             rows.push((format!("e2e/{backend}/n={n}/alpha={alpha} (ms)"), ms));
         }
     }
@@ -94,7 +95,7 @@ fn kernel(rows: &mut Vec<(String, f64)>) {
             let name = k.backend().name();
             rows.push((
                 format!("kernel/{name}/len={len} (ns/probe)"),
-                median(sample),
+                fastest(sample),
             ));
         }
     }

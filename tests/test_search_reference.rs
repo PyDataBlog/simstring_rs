@@ -153,6 +153,38 @@ fn all_measures_match_brute_force() {
 }
 
 #[test]
+fn interleaved_databases_share_thread_state() {
+    // Search keeps per-thread scratch; alternating a large and a small database on one
+    // thread must give the same answers as fresh threads.
+    let mut large = HashDb::new(Arc::new(CharacterNgrams::default()));
+    for i in 0..5000 {
+        large.insert(format!("entry {i}"));
+    }
+    let mut small = HashDb::new(Arc::new(CharacterNgrams::default()));
+    small.insert("entry 7".into());
+    small.insert("entry 70".into());
+    let queries = ["entry 7", "entry 4999", "entry 70", "unrelated"];
+    let run = |db: &HashDb, query: &str| -> Vec<(String, f64)> {
+        let searcher = Searcher::new(db, Cosine);
+        let results = searcher.ranked_search(query, 0.6).unwrap();
+        results
+            .into_iter()
+            .map(|(t, s)| (t.to_owned(), s))
+            .collect()
+    };
+    let fresh = |db: &HashDb, query: &str| {
+        std::thread::scope(|s| s.spawn(|| run(db, query)).join().unwrap())
+    };
+    for _ in 0..3 {
+        for db in [&large, &small] {
+            for query in queries {
+                assert_eq!(run(db, query), fresh(db, query), "query={query:?}");
+            }
+        }
+    }
+}
+
+#[test]
 fn concurrent_queries_and_reinsertion() {
     let mut db = HashDb::new(Arc::new(CharacterNgrams::default()));
     db.insert("old entry".into());

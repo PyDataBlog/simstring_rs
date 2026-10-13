@@ -38,9 +38,22 @@ impl<M: Measure + ?Sized> Measure for &M {
     }
 }
 
-// Size of the intersection of two sorted feature slices, using the selected backend.
+// Size of the intersection of two sorted feature slices. Search never calls this (it
+// counts overlaps in the join), and feature sets are short, so a scalar merge suffices.
 pub(crate) fn compute_intersection_size(x: &[Spur], y: &[Spur]) -> usize {
-    crate::execution::kernels().intersect(x, y)
+    let (mut i, mut j, mut count) = (0, 0, 0);
+    while i < x.len() && j < y.len() {
+        match x[i].cmp(&y[j]) {
+            std::cmp::Ordering::Equal => {
+                count += 1;
+                i += 1;
+                j += 1;
+            }
+            std::cmp::Ordering::Less => i += 1,
+            std::cmp::Ordering::Greater => j += 1,
+        }
+    }
+    count
 }
 pub use cosine::Cosine;
 pub use dice::Dice;

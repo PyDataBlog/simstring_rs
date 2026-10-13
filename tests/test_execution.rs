@@ -1,9 +1,6 @@
 //! Execution backend selection and differential tests of every supported backend.
 
-use lasso::{Key, Spur};
-use simstring_rust::execution::{
-    Backend, Kernels, contains_native, intersect_native, kernels, resolve,
-};
+use simstring_rust::execution::{Backend, Kernels, contains_native, kernels, resolve};
 use simstring_rust::{CharacterNgrams, Cosine, HashDb, Searcher};
 use std::process::{Command, Output};
 use std::sync::Arc;
@@ -51,18 +48,6 @@ fn selected_backend_matches_environment() {
 }
 
 #[test]
-fn spur_order_matches_its_public_value() {
-    let keys: Vec<Spur> = [0, 1, 2, 0xFFFF, u32::MAX as usize - 2]
-        .into_iter()
-        .map(|n| Spur::try_from_usize(n).unwrap())
-        .collect();
-    for pair in keys.windows(2) {
-        assert!(pair[0] < pair[1]);
-        assert!(pair[0].into_inner().get() < pair[1].into_inner().get());
-    }
-}
-
-#[test]
 fn contains_matches_native() {
     let mut seed = 1;
     for kernels in supported_kernels() {
@@ -84,44 +69,6 @@ fn contains_matches_native() {
                             slice.len()
                         );
                     }
-                }
-            }
-        }
-    }
-}
-
-#[test]
-fn intersect_matches_native() {
-    let spur = |n: u64| Spur::try_from_usize(n as usize).unwrap();
-    let mut seed = 7;
-    for kernels in supported_kernels() {
-        for case in 0..3000 {
-            let mut set = |len: u64, range: u64, high: u64| {
-                let mut v: Vec<_> = (0..len)
-                    .map(|_| spur(high + lcg(&mut seed) % range))
-                    .collect();
-                v.sort_unstable();
-                v
-            };
-            let range = 1 + case % 97;
-            let high = if case % 5 == 0 {
-                u32::MAX as u64 - 200
-            } else {
-                0
-            };
-            let x = set(case % 41, range, high);
-            let y = set((case * 7) % 67, range, high);
-            let mut unique = y.clone();
-            unique.dedup();
-            for (a, b) in [(&x, &y), (&y, &x), (&unique, &unique), (&x, &unique)] {
-                for offset in 0..b.len().min(17) {
-                    assert_eq!(
-                        kernels.intersect(a, &b[offset..]),
-                        intersect_native(a, &b[offset..]),
-                        "{:?} a={a:?} b={:?}",
-                        kernels.backend(),
-                        &b[offset..]
-                    );
                 }
             }
         }

@@ -1,4 +1,4 @@
-//! Runtime selection of the integer-matching kernels used by search and similarity.
+//! Runtime selection of the posting-list membership kernel used by search.
 //!
 //! The fastest backend supported by the running CPU is chosen once per process:
 //! AVX-512F, then AVX2, then the portable native code. Non-x86_64 targets always use
@@ -6,13 +6,11 @@
 //! empty means `auto`) is read on first use; an unknown or unsupported value panics.
 
 use crate::database::StringId;
-use lasso::Spur;
 use std::sync::OnceLock;
 
 const ENV_VAR: &str = "SIMSTRING_RS_BACKEND";
 
 type ContainsFn = unsafe fn(&[StringId], StringId) -> bool;
-type IntersectFn = unsafe fn(&[Spur], &[Spur]) -> usize;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Backend {
@@ -67,27 +65,22 @@ pub fn resolve(requested: &str, supported: impl Fn(Backend) -> bool) -> Result<B
 pub struct Kernels {
     backend: Backend,
     contains: ContainsFn,
-    intersect: IntersectFn,
 }
 
 impl Kernels {
     /// # Safety
     /// The running CPU must support `backend`.
     pub unsafe fn new(backend: Backend) -> Self {
-        let (contains, intersect): (ContainsFn, IntersectFn) = match backend {
-            Backend::Native => (contains_native, intersect_native),
+        let contains: ContainsFn = match backend {
+            Backend::Native => contains_native,
             #[cfg(target_arch = "x86_64")]
-            Backend::Avx2 => (x86::contains_avx2, x86::intersect_avx2),
+            Backend::Avx2 => x86::contains_avx2,
             #[cfg(target_arch = "x86_64")]
-            Backend::Avx512 => (x86::contains_avx512, x86::intersect_avx512),
+            Backend::Avx512 => x86::contains_avx512,
             #[cfg(not(target_arch = "x86_64"))]
             _ => unreachable!("SIMD backends are never supported on this target"),
         };
-        Self {
-            backend,
-            contains,
-            intersect,
-        }
+        Self { backend, contains }
     }
 
     pub fn backend(&self) -> Backend {
@@ -99,13 +92,6 @@ impl Kernels {
     pub fn contains(&self, ids: &[StringId], id: StringId) -> bool {
         // SAFETY: `Kernels::new` requires CPU support for the selected backend.
         unsafe { (self.contains)(ids, id) }
-    }
-
-    /// Size of the multiset intersection of two sorted slices.
-    #[inline]
-    pub fn intersect(&self, x: &[Spur], y: &[Spur]) -> usize {
-        // SAFETY: as for `contains`.
-        unsafe { (self.intersect)(x, y) }
     }
 }
 
@@ -128,30 +114,9 @@ pub fn contains_native(ids: &[StringId], id: StringId) -> bool {
     ids.binary_search(&id).is_ok()
 }
 
-pub fn intersect_native(x: &[Spur], y: &[Spur]) -> usize {
-    let mut intersection_size = 0;
-    let mut i = 0;
-    let mut j = 0;
-
-    while i < x.len() && j < y.len() {
-        match x[i].cmp(&y[j]) {
-            std::cmp::Ordering::Equal => {
-                intersection_size += 1;
-                i += 1;
-                j += 1;
-            }
-            std::cmp::Ordering::Less => i += 1,
-            std::cmp::Ordering::Greater => j += 1,
-        }
-    }
-
-    intersection_size
-}
-
 #[cfg(target_arch = "x86_64")]
 mod x86 {
-    use super::{StringId, contains_native, intersect_native};
-    use lasso::Spur;
+    use super::{StringId, contains_native};
     use std::arch::x86_64::*;
 
     /// Narrows a sorted slice by binary search to an in-bounds block of `W` elements
@@ -169,35 +134,6 @@ mod x86 {
         }
         let start = lo.min(ids.len().checked_sub(W)?);
         ids[start..start + W].try_into().ok()
-    }
-
-    /// Sorted-merge intersection matching one key of the shorter input against `W` keys
-    /// of the longer one. `eq_mask` returns a bit mask of the lanes equal to the key.
-    /// Consuming only the first equal lane preserves multiplicity for duplicate keys.
-    #[inline(always)]
-    fn intersect_blocks<const W: usize>(
-        x: &[Spur],
-        y: &[Spur],
-        eq_mask: impl Fn(&[u32; W], u32) -> u32,
-    ) -> usize {
-        let (x, y) = if x.len() <= y.len() { (x, y) } else { (y, x) };
-        // `Spur` orders by this public value.
-        let key = |spur: Spur| spur.into_inner().get();
-        let (mut i, mut j, mut count) = (0, 0, 0);
-        while i < x.len() && j + W <= y.len() {
-            if y[j + W - 1] < x[i] {
-                j += W;
-                continue;
-            }
-            let block: [Spur; W] = y[j..j + W].try_into().unwrap();
-            let mask = eq_mask(&block.map(key), key(x[i]));
-            if mask != 0 {
-                count += 1;
-                j += mask.trailing_zeros() as usize + 1;
-            }
-            i += 1;
-        }
-        count + intersect_native(&x[i..], &y[j..])
     }
 
     /// # Safety
@@ -224,45 +160,5 @@ mod x86 {
         // SAFETY: `block` holds 16 u32 values, i.e. one unaligned 512-bit load.
         let lanes = unsafe { _mm512_loadu_si512(block.as_ptr().cast()) };
         _mm512_cmpeq_epi32_mask(lanes, _mm512_set1_epi32(id as i32)) != 0
-    }
-
-    /// # Safety
-    /// The CPU must support AVX2.
-    #[target_feature(enable = "avx2")]
-    pub(super) unsafe fn intersect_avx2(x: &[Spur], y: &[Spur]) -> usize {
-        intersect_blocks::<8>(x, y, |block, key| {
-            // SAFETY: AVX2 is enabled here; `block` holds 8 u32 values.
-            unsafe { mask_avx2(block, key) }
-        })
-    }
-
-    /// # Safety
-    /// The CPU must support AVX-512F.
-    #[target_feature(enable = "avx512f")]
-    pub(super) unsafe fn intersect_avx512(x: &[Spur], y: &[Spur]) -> usize {
-        intersect_blocks::<16>(x, y, |block, key| {
-            // SAFETY: AVX-512F is enabled here; `block` holds 16 u32 values.
-            unsafe { mask_avx512(block, key) }
-        })
-    }
-
-    #[inline]
-    #[target_feature(enable = "avx2")]
-    unsafe fn mask_avx2(block: &[u32; 8], key: u32) -> u32 {
-        // SAFETY: `block` is exactly 256 bits.
-        let lanes = unsafe { _mm256_loadu_si256(block.as_ptr().cast()) };
-        let eq = _mm256_cmpeq_epi32(lanes, _mm256_set1_epi32(key as i32));
-        _mm256_movemask_ps(_mm256_castsi256_ps(eq)) as u32
-    }
-
-    #[inline]
-    #[target_feature(enable = "avx512f")]
-    unsafe fn mask_avx512(block: &[u32; 16], key: u32) -> u32 {
-        // SAFETY: `block` is exactly 512 bits.
-        let lanes = unsafe { _mm512_loadu_si512(block.as_ptr().cast()) };
-        u32::from(_mm512_cmpeq_epi32_mask(
-            lanes,
-            _mm512_set1_epi32(key as i32),
-        ))
     }
 }

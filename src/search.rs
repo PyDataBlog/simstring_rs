@@ -105,51 +105,75 @@ impl<'db, M: Measure> Searcher<'db, M> {
         let min = self.measure.min_feature_size(query_size, alpha);
         let max = self.measure.max_feature_size(query_size, alpha, self.db);
         let sizes = self.db.feature_sizes();
-        let start = sizes.partition_point(|&size| size < min);
-        let end = sizes.partition_point(|&size| size <= max);
-        if start >= end {
+        let sizes = &sizes[sizes.partition_point(|&size| size < min)..];
+        let sizes = &sizes[..sizes.partition_point(|&size| size <= max)];
+        let (Some(&lo), Some(&hi)) = (sizes.first(), sizes.last()) else {
             return Vec::new();
+        };
+        // Gather each feature's posting lists once. Looking up every (size, feature)
+        // pair instead costs a probe per pair, and most pairs miss.
+        let mut hits: Vec<(usize, &[StringId])> = Vec::new();
+        for &feature in features {
+            self.db.visit_postings(feature, lo, hi, &mut |size, ids| {
+                // Tolerate implementations that ignore the documented contract.
+                if (lo..=hi).contains(&size) && !ids.is_empty() {
+                    hits.push((size, ids));
+                }
+            });
         }
-        let sizes = &sizes[start..end];
-        let join = |&size: &usize| {
+        // Group by size with a counting sort: sizes span a small range, and a comparison
+        // sort of all hits costs more than the lookups it replaces.
+        let mut starts = vec![0; hi - lo + 2];
+        for &(size, _) in &hits {
+            starts[size - lo + 1] += 1;
+        }
+        for i in 1..starts.len() {
+            starts[i] += starts[i - 1];
+        }
+        let mut grouped: Vec<&[StringId]> = vec![&[]; hits.len()];
+        let mut next = starts.clone();
+        for &(size, ids) in &hits {
+            grouped[next[size - lo]] = ids;
+            next[size - lo] += 1;
+        }
+        // Shortest lists first: each join scans a prefix of its group. Sizes with fewer
+        // than tau lists cannot match, so skip them before paying for the sort.
+        let mut joins = Vec::new();
+        for &size in sizes {
+            let range = starts[size - lo]..starts[size - lo + 1];
             let tau = self
                 .measure
                 .minimum_common_feature_count(query_size, size, alpha)
                 .max(1);
-            if tau > features.len() {
-                return Vec::new();
+            if range.len() >= tau {
+                grouped[range.clone()].sort_unstable_by_key(|ids| ids.len());
+                joins.push((size, range, tau));
             }
-            self.overlap_join(features, query_size, tau, size, alpha)
+        }
+        let join = |(size, range, tau): &(usize, std::ops::Range<usize>, usize)| {
+            self.overlap_join(&grouped[range.clone()], query_size, *tau, *size, alpha)
         };
         // Small joins cost less than scheduling a Rayon task. Parallelize only large
         // databases; independent callers can always search concurrently.
-        if self.db.total_strings() >= 100_000 && sizes.len() > 4 {
-            sizes.par_iter().flat_map_iter(join).collect()
+        if self.db.total_strings() >= 100_000 && joins.len() > 4 {
+            joins.par_iter().flat_map_iter(join).collect()
         } else {
-            sizes.iter().flat_map(join).collect()
+            joins.iter().flat_map(join).collect()
         }
     }
 
+    /// `postings` holds one feature-set size's non-empty lists, shortest first.
     fn overlap_join(
         &self,
-        features: &[Spur],
+        postings: &[&[StringId]],
         query_size: usize,
         tau: usize,
         size: usize,
         alpha: f64,
     ) -> Vec<(StringId, f64)> {
-        if tau == 0 || tau > features.len() {
+        if tau == 0 || postings.len() < tau {
             return Vec::new();
         }
-        let mut postings: Vec<_> = features
-            .iter()
-            .filter_map(|&feature| self.db.lookup_strings(size, feature))
-            .filter(|ids| !ids.is_empty())
-            .collect();
-        if postings.len() < tau {
-            return Vec::new();
-        }
-        postings.sort_unstable_by_key(|ids| ids.len());
         // Every match must occur in this prefix: only tau - 1 lists remain outside it.
         // Missing query features cannot contribute and need not enlarge the prefix.
         let prefix_len = postings.len() - tau + 1;

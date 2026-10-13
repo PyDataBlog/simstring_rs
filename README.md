@@ -132,11 +132,12 @@ as well as Python method signatures. Custom Rust implementations need these upda
   occurrence-qualified features. The default `features` method interns, sorts,
   and deduplicates them for insertion; search visits them without interning.
 - **Database**: `interner()` returns `&Rodeo` rather than a locked `Arc`.
-  `StringId` is `u32`, so a database holds at most `u32::MAX` strings.
   `lookup_strings()` returns sorted, unique `Option<&[StringId]>` postings, and
   `get_features()` returns `Option<&[Spur]>`. Implement `feature_sizes()` as a
   sorted, unique slice of populated sizes. Each ID belongs to exactly one size
   bucket; stored features must be sorted and unique, using the same interner.
+  Optionally override `visit_postings()` to enumerate one feature's postings across
+  a size range directly; the default calls `lookup_strings()` once per size.
 - **Measure**: implement `similarity_from_counts(x_len, y_len, common) -> f64`.
   The default `similarity` intersects sorted feature sets and delegates to it.
   Search uses counts directly, so this method must agree with the pruning bounds.
@@ -154,19 +155,20 @@ always use native. The same build (and Python wheel) contains all backends; no s
 `RUSTFLAGS` are needed. All backends produce identical results.
 
 The SIMD kernels are faster on short posting lists in isolation, but end-to-end search
-time is currently the same on every backend: most of the time goes to counting and
-hashing, not membership checks. `cargo bench --bench micro` reports both (100 queries
-over `benches/data/company_names.txt`, Cosine, minimum of 30 runs). Measured on one
-x86_64 machine, before and after the ScanCount, flat posting index and `u32` ID changes:
+time is currently the same on every backend: most of the time goes to gathering
+postings and counting, not membership checks. `cargo bench --bench micro` reports both
+(100 queries over `benches/data/company_names.txt`, Cosine, minimum of 30 runs). Measured
+on one x86_64 machine, before and after the ScanCount and per-feature posting index
+changes:
 
 | n-gram | alpha | before, native | now, native | now, AVX2 |
 |---|---|---|---|---|
-| 2 | 0.6 | 5.22 ms | 4.78 ms | 4.79 ms |
-| 2 | 0.9 | 0.55 ms | 0.52 ms | 0.50 ms |
-| 3 | 0.6 | 2.93 ms | 2.37 ms | 2.41 ms |
-| 3 | 0.9 | 0.47 ms | 0.39 ms | 0.39 ms |
-| 4 | 0.6 | 2.28 ms | 1.76 ms | 1.77 ms |
-| 4 | 0.9 | 0.46 ms | 0.40 ms | 0.39 ms |
+| 2 | 0.6 | 5.22 ms | 4.14 ms | 4.38 ms |
+| 2 | 0.9 | 0.55 ms | 0.47 ms | 0.47 ms |
+| 3 | 0.6 | 2.93 ms | 1.66 ms | 1.77 ms |
+| 3 | 0.9 | 0.47 ms | 0.34 ms | 0.34 ms |
+| 4 | 0.6 | 2.28 ms | 1.07 ms | 1.12 ms |
+| 4 | 0.9 | 0.46 ms | 0.32 ms | 0.30 ms |
 
 Set `SIMSTRING_RS_BACKEND` to `auto` (default), `native`, `avx2` or `avx512` before the
 first search to override the choice. An invalid value, or a backend the CPU does not

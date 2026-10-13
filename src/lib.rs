@@ -1,6 +1,4 @@
 pub mod database;
-#[doc(hidden)] // Internal; public only for integration tests.
-pub mod execution;
 pub mod extractors;
 pub mod measures;
 pub mod python;

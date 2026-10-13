@@ -5,7 +5,7 @@ use simstring_rust::{
 };
 use std::sync::Arc;
 
-/// Multiset intersection size, independent of the library's dispatched kernels.
+/// Multiset intersection size, independent of the library's implementation.
 fn common(x: &[Spur], y: &[Spur]) -> usize {
     let mut y = y.to_vec();
     x.iter()
@@ -33,7 +33,7 @@ fn compare<M: Measure + Copy>(extractor: Arc<dyn FeatureExtractor>, measure: M) 
         "café".into(),
         "a b a b".into(),
         "a b c".into(),
-        // Long inputs give feature sets and postings that span whole SIMD blocks.
+        // Long inputs give large feature sets and long postings.
         "the quick brown fox jumps over the lazy dog".into(),
         "the quick brown fox jumped over the lazy dogs".into(),
         "a quick brown cat jumps over the lazy fox".into(),

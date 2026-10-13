@@ -1,5 +1,4 @@
 import json
-import os
 import subprocess
 from pathlib import Path
 
@@ -22,20 +21,18 @@ def run_benchmarks():
         else:
             print(f"Error running {script}: {process.stderr}")
 
-    # Run Rust benchmark once per execution backend, each in a fresh process.
+    # Run Rust benchmark
     subprocess.run(["cargo", "build", "--release", "--bench", "bench"], check=True)
-    for backend in ["native", "avx2", "avx512"]:
-        process = subprocess.run(
-            [str(benches_dir.parent / "target/release/deps/bench-*")],
-            capture_output=True,
-            text=True,
-            shell=True,
-            env={**os.environ, "SIMSTRING_RS_BACKEND": backend},
-        )
-        if process.returncode == 0 and process.stdout:
-            results.extend(json.loads(process.stdout))
-        else:
-            print(f"Skipping rust bench ({backend}): {process.stderr.strip()}")
+    process = subprocess.run(
+        [str(benches_dir.parent / "target/release/deps/bench-*")],
+        capture_output=True,
+        text=True,
+        shell=True,
+    )
+    if process.stdout:
+        results.extend(json.loads(process.stdout))
+    else:
+        print(f"Error running rust bench: {process.stderr}")
 
     # Run Ruby benchmark
     process = subprocess.run(

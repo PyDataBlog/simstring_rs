@@ -84,8 +84,7 @@ class TestSimstringBindings:
         assert self.searcher.ranked_search("apple🦀", 1.0) == [("apple🦀", 1.0)]
 
     def test_long_inputs_match_python_reference(self):
-        # Long strings and many duplicates produce feature sets and postings that span
-        # whole SIMD blocks.
+        # Long strings and many duplicates produce large feature sets and long postings.
         extractor = CharacterNgrams(n=3, endmarker="$")
         db = HashDb(extractor)
         words = ["acme", "acne", "apex", "axle"]

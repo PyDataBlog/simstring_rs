@@ -319,8 +319,6 @@ impl PySearcher {
                 "Measure must be one of Cosine, Dice, Jaccard, Overlap, ExactMatch",
             ));
         };
-        // Fail on an invalid SIMSTRING_RS_BACKEND here rather than at the first search.
-        crate::execution::kernels();
         Ok(Self {
             db,
             measure: py_measure,

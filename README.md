@@ -146,41 +146,21 @@ Unknown query features still contribute to similarity denominators. Duplicate
 insertions remain distinct results, and queries with no features return no results.
 Both search methods now apply exact score filtering at threshold boundaries.
 
-## SIMD execution backends
+## Search performance
 
-Search posting-list membership checks run on one of three backends, chosen once per
-process from the running CPU: AVX-512 (requires AVX-512F), then AVX2, then native.
-"Native" is portable scalar code, not a `-C target-cpu=native` build. Non-x86_64 targets
-always use native. The same build (and Python wheel) contains all backends; no special
-`RUSTFLAGS` are needed. All backends produce identical results.
+Most search time goes to gathering postings and counting overlaps.
+`cargo bench --bench micro` measures end-to-end search (100 queries over
+`benches/data/company_names.txt`, Cosine, minimum of 30 runs). Measured on one x86_64
+machine, before and after the ScanCount and per-feature posting index changes:
 
-The SIMD kernels are faster on short posting lists in isolation, but end-to-end search
-time is currently the same on every backend: most of the time goes to gathering
-postings and counting, not membership checks. `cargo bench --bench micro` reports both
-(100 queries over `benches/data/company_names.txt`, Cosine, minimum of 30 runs). Measured
-on one x86_64 machine, before and after the ScanCount and per-feature posting index
-changes:
-
-| n-gram | alpha | before, native | now, native | now, AVX2 |
-|---|---|---|---|---|
-| 2 | 0.6 | 5.22 ms | 4.14 ms | 4.38 ms |
-| 2 | 0.9 | 0.55 ms | 0.47 ms | 0.47 ms |
-| 3 | 0.6 | 2.93 ms | 1.66 ms | 1.77 ms |
-| 3 | 0.9 | 0.47 ms | 0.34 ms | 0.34 ms |
-| 4 | 0.6 | 2.28 ms | 1.07 ms | 1.12 ms |
-| 4 | 0.9 | 0.46 ms | 0.32 ms | 0.30 ms |
-
-Set `SIMSTRING_RS_BACKEND` to `auto` (default), `native`, `avx2` or `avx512` before the
-first search to override the choice. An invalid value, or a backend the CPU does not
-support, panics when the first `Searcher` is created (a `PanicException` in Python)
-instead of silently falling back.
-
-CI runs the Rust and Python test suites with every backend forced on hosted x86_64 Linux
-runners. To check a backend locally (the tests fail if it is not the one selected):
-
-```sh
-SIMSTRING_RS_BACKEND=avx512 SIMSTRING_RS_EXPECT_BACKEND=avx512 cargo test
-```
+| n-gram | alpha | before | now |
+|---|---|---|---|
+| 2 | 0.6 | 5.22 ms | 4.14 ms |
+| 2 | 0.9 | 0.55 ms | 0.47 ms |
+| 3 | 0.6 | 2.93 ms | 1.66 ms |
+| 3 | 0.9 | 0.47 ms | 0.34 ms |
+| 4 | 0.6 | 2.28 ms | 1.07 ms |
+| 4 | 0.9 | 0.46 ms | 0.32 ms |
 
 ## Contributing
 

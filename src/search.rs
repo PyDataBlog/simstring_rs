@@ -35,8 +35,6 @@ pub struct Searcher<'db, M: Measure> {
 
 impl<'db, M: Measure> Searcher<'db, M> {
     pub fn new(db: &'db dyn Database, measure: M) -> Self {
-        // Select the execution backend now so an invalid override fails before searching.
-        crate::execution::kernels();
         Self { db, measure }
     }
 
@@ -178,7 +176,6 @@ impl<'db, M: Measure> Searcher<'db, M> {
         // Missing query features cannot contribute and need not enlarge the prefix.
         let prefix_len = postings.len() - tau + 1;
         let (prefix, rest) = postings.split_at(prefix_len);
-        let kernels = crate::execution::kernels();
         // Only library code runs while the scratch is borrowed; the measure is called
         // afterwards, so a re-entrant or panicking measure cannot see a dirty scratch.
         let survivors: Vec<(StringId, usize)> = SCRATCH.with_borrow_mut(|scratch| {
@@ -206,7 +203,7 @@ impl<'db, M: Measure> Searcher<'db, M> {
                     // Taking the count also restores the all-zero invariant.
                     let mut count = std::mem::take(&mut counts[id]) as usize;
                     for (index, ids) in rest.iter().enumerate() {
-                        count += usize::from(kernels.contains(ids, id));
+                        count += usize::from(ids.binary_search(&id).is_ok());
                         // Even if every remaining list matched, tau is out of reach.
                         if count + rest.len() - index - 1 < tau {
                             return None;

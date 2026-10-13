@@ -219,17 +219,6 @@ jobs:
         if: matrix.target == 'aarch64-unknown-linux-gnu'
         run: cross test --target ${{ matrix.target }} --verbose
 
-      - name: Run tests with forced execution backends
-        # Hosted x86_64 Linux runners are assumed to support AVX2 and AVX-512F. Overrides
-        # are strict, so an unsupported backend fails instead of falling back.
-        if: matrix.target == 'x86_64-unknown-linux-gnu'
-        run: |
-          for backend in native avx2 avx512; do
-            echo "Running tests with backend: $backend"
-            echo "----------------------------------------"
-            SIMSTRING_RS_BACKEND=$backend SIMSTRING_RS_EXPECT_BACKEND=$backend cargo test --target ${{ matrix.target }}
-          done
-
       - name: Run Python binding tests
         shell: bash
         run: |
@@ -245,14 +234,6 @@ jobs:
           maturin build --release --interpreter python
           uv pip install target/wheels/*.whl
           pytest tests/python/ -vv
-
-      - name: Run Python binding tests with forced execution backends
-        if: matrix.target == 'x86_64-unknown-linux-gnu'
-        run: |
-          source .venv/bin/activate
-          for backend in native avx2 avx512; do
-            SIMSTRING_RS_BACKEND=$backend pytest tests/python/ -q
-          done
 
       - name: Build
         if: matrix.target != 'aarch64-unknown-linux-gnu'

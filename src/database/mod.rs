@@ -3,7 +3,9 @@ mod hashdb;
 use crate::extractors::FeatureExtractor;
 use lasso::{Rodeo, Spur};
 
-pub type StringId = usize;
+/// Insertion index of a string. 32 bits halve posting-list memory and double the IDs per
+/// SIMD register; a database therefore holds at most `u32::MAX` strings.
+pub type StringId = u32;
 
 pub trait Database: Send + Sync {
     fn insert(&mut self, text: String);

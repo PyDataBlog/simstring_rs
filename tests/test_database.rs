@@ -1,3 +1,4 @@
+use simstring_rust::database::StringId;
 use simstring_rust::{CharacterNgrams, Database, HashDb};
 use std::sync::Arc;
 
@@ -102,10 +103,10 @@ fn test_string_collection_retrieval() {
     for s in &corpus {
         db.insert(s.to_string());
     }
-    for (id, &expected_string) in corpus.iter().enumerate() {
+    for (id, &expected_string) in (0..).zip(&corpus) {
         assert_eq!(db.get_string(id), Some(expected_string));
     }
-    assert_eq!(db.get_string(corpus.len()), None);
+    assert_eq!(db.get_string(corpus.len() as StringId), None);
 }
 
 #[test]

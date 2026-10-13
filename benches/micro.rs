@@ -61,7 +61,7 @@ fn kernel(rows: &mut Vec<(String, f64)>) {
         seed ^= seed << 13;
         seed ^= seed >> 7;
         seed ^= seed << 17;
-        (seed % 6000) as usize
+        (seed % 6000) as u32
     };
     for len in [8, 16, 32, 64, 128, 512] {
         // Posting-like lists from a 6000-id universe, probed with sorted ids as in a join.

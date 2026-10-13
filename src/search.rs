@@ -161,7 +161,7 @@ impl<'db, M: Measure> Searcher<'db, M> {
             let Scratch { counts, touched } = scratch;
             // Lists are sorted, so their last IDs bound every counter used below.
             let max_id = prefix.iter().map(|ids| ids[ids.len() - 1]).max();
-            let needed = max_id.map_or(0, |id| id + 1);
+            let needed = max_id.map_or(0, |id| id as usize + 1);
             if counts.len() < needed {
                 counts.resize(needed, 0);
             }
@@ -169,10 +169,11 @@ impl<'db, M: Measure> Searcher<'db, M> {
             // the concatenated lists. `touched` records each ID once.
             for ids in prefix {
                 for &id in *ids {
-                    if counts[id] == 0 {
+                    let slot = &mut counts[id as usize];
+                    if *slot == 0 {
                         touched.push(id);
                     }
-                    counts[id] += 1;
+                    *slot += 1;
                 }
             }
             touched.sort_unstable();
@@ -180,7 +181,7 @@ impl<'db, M: Measure> Searcher<'db, M> {
                 .iter()
                 .filter_map(|&id| {
                     // Taking the count also restores the all-zero invariant.
-                    let mut count = std::mem::take(&mut counts[id]) as usize;
+                    let mut count = std::mem::take(&mut counts[id as usize]) as usize;
                     for (index, ids) in rest.iter().enumerate() {
                         count += usize::from(kernels.contains(ids, id));
                         // Even if every remaining list matched, tau is out of reach.

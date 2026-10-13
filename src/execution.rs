@@ -207,15 +207,10 @@ mod x86 {
         let Some(block) = block_for::<8>(ids, id) else {
             return contains_native(ids, id);
         };
-        let ptr = block.as_ptr().cast::<__m256i>();
-        let needle = _mm256_set1_epi64x(id as i64);
-        // SAFETY: `block` holds 8 u64 values, i.e. two unaligned 256-bit loads.
-        let eq = unsafe {
-            _mm256_or_si256(
-                _mm256_cmpeq_epi64(_mm256_loadu_si256(ptr), needle),
-                _mm256_cmpeq_epi64(_mm256_loadu_si256(ptr.add(1)), needle),
-            )
-        };
+        // Equality ignores signedness, so the u32 bits can be compared as i32.
+        // SAFETY: `block` holds 8 u32 values, i.e. one unaligned 256-bit load.
+        let lanes = unsafe { _mm256_loadu_si256(block.as_ptr().cast()) };
+        let eq = _mm256_cmpeq_epi32(lanes, _mm256_set1_epi32(id as i32));
         _mm256_testz_si256(eq, eq) == 0
     }
 
@@ -226,14 +221,9 @@ mod x86 {
         let Some(block) = block_for::<16>(ids, id) else {
             return contains_native(ids, id);
         };
-        let ptr = block.as_ptr();
-        let needle = _mm512_set1_epi64(id as i64);
-        // SAFETY: `block` holds 16 u64 values, i.e. two unaligned 512-bit loads.
-        unsafe {
-            (_mm512_cmpeq_epi64_mask(_mm512_loadu_si512(ptr.cast()), needle)
-                | _mm512_cmpeq_epi64_mask(_mm512_loadu_si512(ptr.add(8).cast()), needle))
-                != 0
-        }
+        // SAFETY: `block` holds 16 u32 values, i.e. one unaligned 512-bit load.
+        let lanes = unsafe { _mm512_loadu_si512(block.as_ptr().cast()) };
+        _mm512_cmpeq_epi32_mask(lanes, _mm512_set1_epi32(id as i32)) != 0
     }
 
     /// # Safety

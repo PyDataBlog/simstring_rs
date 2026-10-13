@@ -59,7 +59,8 @@ impl Database for HashDb {
     fn insert(&mut self, text: String) {
         let features = self.feature_extractor.features(&text, &mut self.interner);
         let size = features.len();
-        let string_id = self.strings.len();
+        let string_id =
+            StringId::try_from(self.strings.len()).expect("HashDb holds at most u32::MAX strings");
 
         self.strings.push(text);
         if let Err(index) = self.feature_sizes.binary_search(&size) {
@@ -88,11 +89,11 @@ impl Database for HashDb {
     }
 
     fn get_string(&self, id: StringId) -> Option<&str> {
-        self.strings.get(id).map(AsRef::as_ref)
+        self.strings.get(id as usize).map(AsRef::as_ref)
     }
 
     fn get_features(&self, id: StringId) -> Option<&[Spur]> {
-        self.string_features.get(id).map(Vec::as_slice)
+        self.string_features.get(id as usize).map(Vec::as_slice)
     }
 
     fn feature_extractor(&self) -> &dyn FeatureExtractor {

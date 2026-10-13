@@ -38,6 +38,10 @@ num_cpus = "1.17"
 name = "bench"
 harness = false
 
+[[bench]]
+name = "micro"
+harness = false
+
 [profile.release]
 debug = true
 

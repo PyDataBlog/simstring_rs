@@ -132,6 +132,7 @@ as well as Python method signatures. Custom Rust implementations need these upda
   occurrence-qualified features. The default `features` method interns, sorts,
   and deduplicates them for insertion; search visits them without interning.
 - **Database**: `interner()` returns `&Rodeo` rather than a locked `Arc`.
+  `StringId` is `u32`, so a database holds at most `u32::MAX` strings.
   `lookup_strings()` returns sorted, unique `Option<&[StringId]>` postings, and
   `get_features()` returns `Option<&[Spur]>`. Implement `feature_sizes()` as a
   sorted, unique slice of populated sizes. Each ID belongs to exactly one size
@@ -146,11 +147,26 @@ Both search methods now apply exact score filtering at threshold boundaries.
 
 ## SIMD execution backends
 
-Search posting lookups and `Measure::similarity` intersections run on one of three
-backends, chosen once per process from the running CPU: AVX-512 (requires AVX-512F),
-then AVX2, then the portable native implementation. Non-x86_64 targets always use native.
-The same build (and Python wheel) contains all backends; no special `RUSTFLAGS` are needed.
-All backends produce identical results.
+Search posting-list membership checks run on one of three backends, chosen once per
+process from the running CPU: AVX-512 (requires AVX-512F), then AVX2, then native.
+"Native" is portable scalar code, not a `-C target-cpu=native` build. Non-x86_64 targets
+always use native. The same build (and Python wheel) contains all backends; no special
+`RUSTFLAGS` are needed. All backends produce identical results.
+
+The SIMD kernels are faster on short posting lists in isolation, but end-to-end search
+time is currently the same on every backend: most of the time goes to counting and
+hashing, not membership checks. `cargo bench --bench micro` reports both (100 queries
+over `benches/data/company_names.txt`, Cosine, minimum of 30 runs). Measured on one
+x86_64 machine, before and after the ScanCount, flat posting index and `u32` ID changes:
+
+| n-gram | alpha | before, native | now, native | now, AVX2 |
+|---|---|---|---|---|
+| 2 | 0.6 | 5.22 ms | 4.78 ms | 4.79 ms |
+| 2 | 0.9 | 0.55 ms | 0.52 ms | 0.50 ms |
+| 3 | 0.6 | 2.93 ms | 2.37 ms | 2.41 ms |
+| 3 | 0.9 | 0.47 ms | 0.39 ms | 0.39 ms |
+| 4 | 0.6 | 2.28 ms | 1.76 ms | 1.77 ms |
+| 4 | 0.9 | 0.46 ms | 0.40 ms | 0.39 ms |
 
 Set `SIMSTRING_RS_BACKEND` to `auto` (default), `native`, `avx2` or `avx512` before the
 first search to override the choice. An invalid value, or a backend the CPU does not

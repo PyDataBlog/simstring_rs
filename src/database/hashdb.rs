@@ -4,13 +4,10 @@ use lasso::{Key, Rodeo, Spur};
 use std::fmt;
 use std::sync::Arc;
 
-/// One feature's posting lists. `lists[i]` holds the strings with `sizes[i]` features;
-/// `sizes` is sorted and kept apart so searching it touches few cache lines.
-#[derive(Default)]
-struct FeaturePostings {
-    sizes: Vec<usize>,
-    lists: Vec<Vec<StringId>>,
-}
+/// One feature's posting lists as `(size, ids)` pairs sorted by size: `ids` holds the
+/// strings with `size` features. One vector per feature keeps inserts to a single
+/// allocation and shift.
+type FeaturePostings = Vec<(usize, Vec<StringId>)>;
 
 pub struct HashDb {
     feature_extractor: Arc<dyn FeatureExtractor>,
@@ -25,7 +22,7 @@ pub struct HashDb {
 
 impl fmt::Debug for HashDb {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let indexed: usize = self.postings.iter().map(|p| p.sizes.len()).sum();
+        let indexed: usize = self.postings.iter().map(Vec::len).sum();
         f.debug_struct("HashDb")
             .field("num_strings", &self.strings.len())
             .field("num_feature_size_buckets", &self.feature_sizes.len())
@@ -73,11 +70,14 @@ impl Database for HashDb {
                     .resize_with(index + 1, FeaturePostings::default);
             }
             let postings = &mut self.postings[index];
-            match postings.sizes.binary_search(&size) {
-                Ok(i) => postings.lists[i].push(string_id),
+            match postings.binary_search_by_key(&size, |&(s, _)| s) {
+                Ok(i) => postings[i].1.push(string_id),
                 Err(i) => {
-                    postings.sizes.insert(i, size);
-                    postings.lists.insert(i, vec![string_id]);
+                    // Start at the capacity a first push would grow to anyway, so the
+                    // second ID does not reallocate.
+                    let mut ids = Vec::with_capacity(4);
+                    ids.push(string_id);
+                    postings.insert(i, (size, ids));
                 }
             }
         }
@@ -95,8 +95,8 @@ impl Database for HashDb {
 
     fn lookup_strings(&self, size: usize, feature: Spur) -> Option<&[StringId]> {
         let postings = self.postings.get(feature.into_usize())?;
-        let i = postings.sizes.binary_search(&size).ok()?;
-        Some(&postings.lists[i])
+        let i = postings.binary_search_by_key(&size, |&(s, _)| s).ok()?;
+        Some(&postings[i].1)
     }
 
     fn visit_postings<'a>(
@@ -109,13 +109,12 @@ impl Database for HashDb {
         let Some(postings) = self.postings.get(feature.into_usize()) else {
             return;
         };
-        let start = postings.sizes.partition_point(|&size| size < min);
-        let end = postings.sizes.partition_point(|&size| size <= max);
-        for (&size, ids) in postings.sizes[start..end.max(start)]
-            .iter()
-            .zip(&postings.lists[start..])
-        {
-            visit(size, ids);
+        let start = postings.partition_point(|&(size, _)| size < min);
+        for (size, ids) in &postings[start..] {
+            if *size > max {
+                break;
+            }
+            visit(*size, ids);
         }
     }
 

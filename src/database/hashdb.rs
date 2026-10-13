@@ -9,25 +9,27 @@ pub struct HashDb {
     feature_extractor: Arc<dyn FeatureExtractor>,
     pub strings: Vec<String>,
     string_features: Vec<Vec<Spur>>,
-    feature_map: FxHashMap<usize, FxHashMap<Spur, Vec<StringId>>>,
+    /// Posting lists keyed by `posting_key(size, feature)`.
+    postings: FxHashMap<u64, Vec<StringId>>,
     feature_sizes: Vec<usize>,
     interner: Rodeo,
 }
 
+/// Packs a (feature-set size, feature) pair into one key: size in the high 32 bits, the
+/// interner key in the low 32. One flat map means one hash probe per lookup instead of a
+/// size lookup followed by a feature lookup. `None` for sizes no inserted string can have.
+fn posting_key(size: usize, feature: Spur) -> Option<u64> {
+    let size = u32::try_from(size).ok()?;
+    Some(u64::from(size) << 32 | u64::from(feature.into_inner().get()))
+}
+
 impl fmt::Debug for HashDb {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let total_unique_features: usize = self
-            .feature_map
-            .values()
-            .map(|size_map| size_map.len())
-            .sum();
-        let interner = &self.interner;
-
         f.debug_struct("HashDb")
             .field("num_strings", &self.strings.len())
-            .field("num_feature_size_buckets", &self.feature_map.len())
-            .field("total_unique_features_interned", &interner.len())
-            .field("total_unique_features_indexed", &total_unique_features)
+            .field("num_feature_size_buckets", &self.feature_sizes.len())
+            .field("total_unique_features_interned", &self.interner.len())
+            .field("total_unique_features_indexed", &self.postings.len())
             .finish()
     }
 }
@@ -38,7 +40,7 @@ impl HashDb {
             feature_extractor,
             strings: Vec::new(),
             string_features: Vec::new(),
-            feature_map: FxHashMap::default(),
+            postings: FxHashMap::default(),
             feature_sizes: Vec::new(),
             interner: Rodeo::default(),
         }
@@ -63,9 +65,9 @@ impl Database for HashDb {
         if let Err(index) = self.feature_sizes.binary_search(&size) {
             self.feature_sizes.insert(index, size);
         }
-        let size_map = self.feature_map.entry(size).or_default();
         for &feature in &features {
-            size_map.entry(feature).or_default().push(string_id);
+            let key = posting_key(size, feature).expect("a string has at most u32::MAX features");
+            self.postings.entry(key).or_default().push(string_id);
         }
         self.string_features.push(features);
     }
@@ -73,16 +75,15 @@ impl Database for HashDb {
     fn clear(&mut self) {
         self.strings.clear();
         self.string_features.clear();
-        self.feature_map.clear();
+        self.postings.clear();
         // clear the interner to release memory
         self.interner.clear();
         self.feature_sizes.clear();
     }
 
     fn lookup_strings(&self, size: usize, feature: Spur) -> Option<&[StringId]> {
-        self.feature_map
-            .get(&size)?
-            .get(&feature)
+        self.postings
+            .get(&posting_key(size, feature)?)
             .map(Vec::as_slice)
     }
 

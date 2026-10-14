@@ -3,26 +3,37 @@ name: Rust CI/CD
 on:
   push:
     branches: ["main"]
-    tags:
-      - "v*"
   pull_request:
     branches: ["main"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: 1
 
 jobs:
+  tests:
+    name: Tests
+    uses: ./.github/workflows/test.yml
+    with:
+      ref: ${{ github.sha }}
+      artifact-prefix: ci
+
   benchmark:
     name: Run Benchmarks
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: read
       pull-requests: write
     steps:
       - uses: actions/checkout@v7
         with:
-          # On pull requests, check out the head ref so we can commit to it
           ref: ${{ github.head_ref }}
           fetch-depth: 0
 
@@ -72,7 +83,7 @@ jobs:
           source .venv/bin/activate
           uv pip install simstring-fast pandas maturin tabulate psutil
           rm -rf target/wheels
-          maturin build --release
+          maturin build --release --locked
           uv pip install target/wheels/*.whl
           # Install ruby dependencies
           gem install simstring_pure descriptive_statistics json
@@ -82,21 +93,14 @@ jobs:
           echo "Running and Comparing Benchmarks..."
           python benches/run_benches.py
 
-      - name: Prepare for benchmark results commit
-        if: startsWith(github.ref, 'refs/tags/')
-        run: |
-          git stash
-          git checkout main
-          git stash pop
-      - name: Commit benchmark results
-        if: startsWith(github.ref, 'refs/tags/')
-        uses: stefanzweifel/git-auto-commit-action@v7
-        with:
-          commit_message: "docs(benchmarks): update benchmark results"
-          file_pattern: BENCHMARKS.md
+      - name: Add benchmark results to the job summary
+        run: cat BENCHMARKS.md >> "$GITHUB_STEP_SUMMARY"
 
       - name: Post benchmark results to PR
-        if: github.event_name == 'pull_request'
+        if: >-
+          github.event_name == 'pull_request' &&
+          github.event.pull_request.head.repo.full_name == github.repository &&
+          github.actor != 'dependabot[bot]'
         uses: actions/github-script@v9
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -131,244 +135,75 @@ jobs:
               });
             }
 
-  test:
-    name: Test on ${{ matrix.target }} / ${{ matrix.rust }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: ubuntu-latest
-            rust: stable
-            target: x86_64-unknown-linux-gnu
-          - os: ubuntu-latest
-            rust: stable
-            target: aarch64-unknown-linux-gnu
-          - os: windows-latest
-            rust: stable
-            target: x86_64-pc-windows-msvc
-          - os: macos-15-intel
-            rust: stable
-            target: x86_64-apple-darwin
-          - os: macos-latest
-            rust: stable
-            target: aarch64-apple-darwin
-
-    steps:
-      - uses: actions/checkout@v7
-
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          toolchain: ${{ matrix.rust }}
-          target: ${{ matrix.target }}
-          components: rustfmt, clippy
-
-      - name: Install cross
-        if: matrix.target == 'aarch64-unknown-linux-gnu'
-        run: cargo install cross
-
-      - name: Set up cargo cache
-        if: runner.os != 'macOS'
-        uses: actions/cache@v6
-        with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            target/
-          key: ${{ runner.os }}-${{ matrix.target }}-cargo-${{ hashFiles('Cargo.lock') }}
-          restore-keys: ${{ runner.os }}-${{ matrix.target }}-cargo-
-
-      - name: Set up Python
-        uses: actions/setup-python@v7
-        with:
-          # GIL-enabled CPython: the abi3 wheels built here cannot be
-          # installed on free-threaded (3.14t) interpreters.
-          python-version: "3.14"
-
-      - name: Cache python dependencies
-        if: runner.os != 'macOS'
-        uses: actions/cache@v6
-        with:
-          path: |
-            .venv
-          key: ${{ runner.os }}-${{ matrix.target }}-py314-abi3-pip-${{ hashFiles('pyproject.toml') }}
-          restore-keys: |
-            ${{ runner.os }}-${{ matrix.target }}-py314-abi3-pip-
-
-      - name: Check formatting
-        run: cargo fmt --all -- --check
-
-      - name: Run clippy
-        if: matrix.target != 'aarch64-unknown-linux-gnu'
-        run: cargo clippy --target ${{ matrix.target }} -- -D warnings
-
-      - name: Run clippy (cross)
-        if: matrix.target == 'aarch64-unknown-linux-gnu'
-        run: cross clippy --target ${{ matrix.target }} -- -D warnings
-
-      - name: Run tests
-        if: matrix.target != 'aarch64-unknown-linux-gnu'
-        run: cargo test --target ${{ matrix.target }} --verbose
-
-      - name: Run tests (cross)
-        if: matrix.target == 'aarch64-unknown-linux-gnu'
-        run: cross test --target ${{ matrix.target }} --verbose
-
-      - name: Run Python binding tests
-        shell: bash
-        run: |
-          pip install uv
-          uv venv --clear --python python
-          if [ "$RUNNER_OS" == "Windows" ]; then
-            source .venv/Scripts/activate
-          else
-            source .venv/bin/activate
-          fi
-          uv pip install maturin pytest
-          rm -rf target/wheels
-          maturin build --release --interpreter python
-          uv pip install target/wheels/*.whl
-          pytest tests/python/ -vv
-
-      - name: Build
-        if: matrix.target != 'aarch64-unknown-linux-gnu'
-        run: cargo build --target ${{ matrix.target }} --verbose
-
-      - name: Build (cross)
-        if: matrix.target == 'aarch64-unknown-linux-gnu'
-        run: cross build --target ${{ matrix.target }} --verbose
-
-      - name: Check documentation
-        run: cargo doc --no-deps --document-private-items
-
-  build_wheels:
-    name: Build wheels on ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [windows-latest, macos-latest]
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
-        with:
-          python-version: "3.10"
-
-      - name: Build wheels
-        uses: PyO3/maturin-action@v1
-        with:
-          command: build
-          args: --release --out dist
-          # Build universal2 wheels on macOS
-          target: ${{ runner.os == 'macOS' && 'universal2-apple-darwin' || '' }}
-
-      - name: Upload wheels
-        uses: actions/upload-artifact@v7
-        with:
-          name: wheels-${{ matrix.os }}
-          path: dist
-
-  build_wheels_linux:
-    name: Build manylinux wheels
+  ci:
+    name: CI
+    if: always()
+    needs: [benchmark, tests]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
-        with:
-          python-version: "3.10"
+      - name: Require all validation jobs to pass
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: jq -e 'all(.[]; .result == "success")' <<< "$RESULTS"
 
-      - name: Build wheels
-        uses: PyO3/maturin-action@v1
-        with:
-          command: build
-          args: --release --out dist
-          manylinux: "2014"
-
-      - name: Upload wheels
-        uses: actions/upload-artifact@v7
-        with:
-          name: wheels-linux
-          path: dist
-
-  test_wheels:
-    name: Test wheels on ${{ matrix.os }} / Python ${{ matrix.python-version }}
-    needs: [build_wheels, build_wheels_linux]
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-14, macos-15, macos-latest]
-        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14", "3.15"]
-        exclude:
-          # Exclude Python 3.10 on macos-14 due to known issues with setup-python
-          - os: macos-14
-            python-version: "3.10"
+  release-please:
+    needs: ci
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+      version: ${{ steps.release.outputs.version }}
+      sha: ${{ steps.release.outputs.sha }}
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
+      - name: Create release bot token
+        id: app-token
+        uses: actions/create-github-app-token@v3
         with:
-          python-version: ${{ matrix.python-version }}
+          app-id: ${{ secrets.RELEASE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
 
-      - uses: actions/download-artifact@v8
+      - name: Run Release Please
+        id: release
+        uses: googleapis/release-please-action@v5
         with:
-          pattern: wheels-*
-          path: dist
-          merge-multiple: true
+          token: ${{ steps.app-token.outputs.token }}
+          target-branch: main
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
 
-      - name: Cache python dependencies
-        if: runner.os != 'macOS'
-        uses: actions/cache@v6
-        with:
-          path: |
-            .venv
-          key: ${{ runner.os }}-pip-${{ matrix.python-version }}-${{ hashFiles('pyproject.toml') }}
-          restore-keys: |
-            ${{ runner.os }}-pip-${{ matrix.python-version }}-
-
-      - name: Install wheel and test dependencies
-        shell: bash
-        run: |
-          pip install uv
-          uv venv --clear
-          if [ "$RUNNER_OS" == "Windows" ]; then
-            source .venv/Scripts/activate
-          else
-            source .venv/bin/activate
-          fi
-          uv pip install pytest
-          uv pip install simstring-rust --no-index --find-links dist/ --force-reinstall
-
-      - name: Run Python binding tests
-        shell: bash
-        run: |
-          if [ "$RUNNER_OS" == "Windows" ]; then
-            source .venv/Scripts/activate
-          else
-            source .venv/bin/activate
-          fi
-          pytest tests/python/ -vv
+  release-tests:
+    name: Test release ${{ needs.release-please.outputs.tag_name }}
+    needs: release-please
+    if: needs.release-please.outputs.release_created == 'true'
+    uses: ./.github/workflows/test.yml
+    with:
+      ref: ${{ needs.release-please.outputs.sha }}
+      artifact-prefix: release
 
   publish_to_test_pypi:
     name: Publish to TestPyPI
-    needs: [test_wheels]
+    needs: [release-please, release-tests]
     runs-on: ubuntu-latest
-    # Run on pushes to main, but not on tags
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: needs.release-please.outputs.release_created == 'true'
     environment:
       name: testpypi
       url: https://test.pypi.org/p/simstring-rust
     permissions:
+      contents: read
       id-token: write
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.release-please.outputs.sha }}
       - uses: actions/download-artifact@v8
         with:
-          pattern: wheels-*
+          pattern: release-wheels-*
           path: dist
           merge-multiple: true
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
       - name: Publish to TestPyPI
         uses: PyO3/maturin-action@v1
         env:
@@ -376,29 +211,30 @@ jobs:
         with:
           command: upload
           args: --non-interactive --skip-existing dist/*.whl
-          working-directory: .
-          before-script-linux: |
-            sudo apt-get update
-            sudo apt-get install -y tree
-            tree .
 
   publish_to_pypi:
     name: Publish to PyPI
-    needs: [test_wheels, publish]
+    needs: [release-please, publish]
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: needs.release-please.outputs.release_created == 'true'
     environment:
       name: pypi
       url: https://pypi.org/p/simstring-rust
     permissions:
+      contents: read
       id-token: write
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.release-please.outputs.sha }}
       - uses: actions/download-artifact@v8
         with:
-          pattern: wheels-*
+          pattern: release-wheels-*
           path: dist
           merge-multiple: true
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
       - name: Publish to PyPI
         uses: PyO3/maturin-action@v1
         env:
@@ -406,105 +242,44 @@ jobs:
         with:
           command: upload
           args: --non-interactive --skip-existing dist/*.whl
-          working-directory: .
-          before-script-linux: |
-            sudo apt-get update
-            sudo apt-get install -y tree
-            tree .
 
-  run-examples:
-    name: Run Examples
-    needs: test
+  publish:
+    name: Publish to crates.io
+    needs: [release-please, release-tests]
+    if: needs.release-please.outputs.release_created == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.release-please.outputs.sha }}
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Run Rust example
-        run: cargo run --example basic --release
-
-      - name: Set up Python
-        uses: actions/setup-python@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.14"
 
-      - name: Cache python dependencies
-        uses: actions/cache@v6
-        with:
-          path: |
-            .venv
-          key: ${{ runner.os }}-pip-${{ hashFiles('pyproject.toml') }}
-          restore-keys: |
-            ${{ runner.os }}-pip-
-
-      - name: Run Python example
-        shell: bash
-        run: |
-          pip install uv
-          uv venv --clear
-          if [ "$RUNNER_OS" == "Windows" ]; then
-            source .venv/Scripts/activate
-          else
-            source .venv/bin/activate
-          fi
-          uv pip install maturin
-          rm -rf target/wheels
-          maturin build --release
-          uv pip install target/wheels/*.whl
-          python examples/python_basic.py
-
-  # Publish to crates.io on new tags
-  publish:
-    name: Publish to crates.io
-    needs: test
-    if: startsWith(github.ref, 'refs/tags/v')
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Check package
-        run: cargo package
-
       - name: Publish to crates.io
-        run: cargo publish
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
-
-  release:
-    name: Create GitHub Release
-    needs: [publish_to_pypi, publish]
-    runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v')
-    permissions:
-      contents: write
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v7
-        with:
-          fetch-depth: 0 # get all tags
-
-      - name: Generate a changelog
-        uses: orhun/git-cliff-action@v4
-        id: git-cliff
-        with:
-          config: cliff.toml
-          args: -vv --latest --strip header
-        env:
-          OUTPUT: CHANGELOG.md
-          GITHUB_REPO: ${{ github.repository }}
-
-      - name: Create Release
-        uses: softprops/action-gh-release@v3
-        with:
-          tag_name: ${{ github.ref_name }}
-          name: "Release ${{ github.ref_name }}"
-          body: ${{ steps.git-cliff.outputs.content }}
-          draft: false
-          prerelease: contains(github.ref, 'alpha') || contains(github.ref, 'beta') || contains(github.ref, 'rc')
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_VERSION: ${{ needs.release-please.outputs.version }}
+        run: |
+          test "$(python -c 'import tomllib; print(tomllib.load(open("Cargo.toml", "rb"))["package"]["version"])')" = "$RELEASE_VERSION"
+          status=$(curl --silent --show-error \
+            --user-agent "simstring_rs release workflow" \
+            --output "$RUNNER_TEMP/crate-version.json" --write-out '%{http_code}' \
+            "https://crates.io/api/v1/crates/simstring_rust/$RELEASE_VERSION")
+          case "$status" in
+            200)
+              echo "simstring_rust $RELEASE_VERSION is already published"
+              ;;
+            404)
+              cargo publish --locked
+              ;;
+            *)
+              echo "Unable to check crates.io version (HTTP $status)" >&2
+              cat "$RUNNER_TEMP/crate-version.json" >&2
+              exit 1
+              ;;
+          esac

@@ -3,7 +3,7 @@
 [![Build Status](https://github.com/PyDataBlog/simstring_rs/actions/workflows/CI.yml/badge.svg)](https://github.com/PyDataBlog/simstring_rs/actions)
 [![Crates.io](https://img.shields.io/crates/v/simstring_rust.svg)](https://crates.io/crates/simstring_rust)
 [![PyPI version](https://badge.fury.io/py/simstring-rust.svg)](https://badge.fury.io/py/simstring-rust)
-[![Python versions](https://img.shields.io/pypi/pyversions/simstring-rust.svg)](https://pypi.org/project/simstring-rust)
+[![Python versions](https://img.shields.io/badge/python-3.10%E2%80%933.15-blue.svg)](pyproject.toml)
 [![Documentation](https://docs.rs/simstring_rust/badge.svg)](https://docs.rs/simstring_rust)
 [![Rust](https://img.shields.io/badge/rust-1.88%2B-blue.svg?maxAge=3600)](https://github.com/PyDataBlog/simstring_rs)
 [![Codecov](https://img.shields.io/codecov/c/github/PyDataBlog/simstring_rs?token=XJM8O8TD4U)](https://codecov.io/gh/PyDataBlog/simstring_rs)
@@ -28,7 +28,8 @@ A native Rust implementation of the CPMerge algorithm, designed for approximate 
 
 ## Installation
 
-Requires Rust 1.88 or newer (edition 2024). Python bindings support Python 3.10+.
+Requires Rust 1.88 or newer (edition 2024). Python bindings require Python 3.10+
+and are tested on Python 3.10–3.15.
 See [Rust API migration](#rust-api-migration) for the read-only query engine's trait changes.
 
 Add `simstring_rust` to your `Cargo.toml`:
@@ -111,16 +112,11 @@ Ordinary merges update the proposed release and run CI. Registry publishing is
 driven by Release Please's `release_created` output.
 
 The [configuration](release-please-config.json) and manifest start from
-`v0.3.5-beta.1`. To target **`0.4.0`** for the first release, include Release Please's
-native version override in the **final squash commit body of this migration**:
-
-```text
-Release-As: 0.4.0
-```
-
-This applies to the first release containing that commit. Subsequent versions
-follow Conventional Commits: `fix` and `perf` bump the patch, `feat` bumps the minor,
-and breaking changes bump the minor while the project is below `1.0.0`. Include the
+`v0.3.5-beta.1`. The `prerelease` versioning strategy with `prerelease: false`
+promotes beta/RC versions to stable versions. With the pending feature changes,
+the first release is **`0.4.0`**. Subsequent versions follow Conventional Commits:
+`fix` and `perf` bump the patch, `feat` bumps the minor, and breaking changes bump
+the minor while the project is below `1.0.0`. Include the
 [Rust API migration](#rust-api-migration) when reviewing the first release notes.
 
 ### Repository setup

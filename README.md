@@ -87,43 +87,66 @@ fn main() {
 }
 ```
 
-<!-- ## Releasing -->
-<!---->
-<!-- This project uses [`cargo-release`](https://github.com/crate-ci/cargo-release) and [`git-cliff`](https://github.com/orhun/git-cliff) to automate the release process. -->
-<!---->
-<!-- ### Prerequisites -->
-<!---->
-<!-- Before creating a release, ensure you have installed the necessary tools: -->
-<!---->
-<!-- ```bash -->
-<!-- cargo install cargo-release -->
-<!-- cargo install git-cliff -->
-<!-- ``` -->
-<!---->
-<!-- ### Creating a Release -->
-<!---->
-<!-- 1.  Ensure your local `main` branch is up-to-date: -->
-<!--     ```bash -->
-<!--     git checkout main -->
-<!--     git pull origin main -->
-<!--     ``` -->
-<!-- 2.  Run `cargo release` with the desired release level (`patch`, `minor`, or `major`). The command runs in dry-run mode by default, so you can review the changes. -->
-<!--     ```bash -->
-<!--     cargo release <LEVEL> -->
-<!--     ``` -->
-<!-- 3.  Once you have verified the plan, execute the release: -->
-<!--     ```bash -->
-<!--     cargo release <LEVEL> --execute -->
-<!--     ``` -->
-<!---->
-<!-- This will automatically: -->
-<!-- -   Generate and update the `CHANGELOG.md`. -->
-<!-- -   Bump the version in `Cargo.toml`. -->
-<!-- -   Commit the changes and create a new Git tag. -->
-<!-- -   Push the commit and tag to GitHub, which triggers the CI/CD pipeline to publish the crate to `crates.io`. -->
+## Releasing
+
+[Release Please](https://github.com/googleapis/release-please) manages stable
+releases from `main`. Its Rust strategy updates `Cargo.toml`, `Cargo.lock`,
+`CHANGELOG.md`, and `.release-please-manifest.json` in a release PR. Maturin derives
+the Python package version from Cargo, so crates.io and PyPI share one version.
+
+### Release process
+
+1. Squash-merge changes into `main` using Conventional Commit PR titles. After CI
+   passes, Release Please creates or updates the pending release PR.
+2. Review the proposed version and release notes after the release PR passes CI.
+   **Merging this PR is the approval to release.**
+3. After CI passes, Release Please creates the `vMAJOR.MINOR.PATCH` tag and GitHub
+   release. The shared [build/test workflow](.github/workflows/test.yml) runs against
+   that exact release commit, producing separately named release wheel artifacts.
+4. The crate is verified and published to crates.io, followed by the tested release
+   wheels to PyPI. TestPyPI receives the same wheels independently of production
+   publishing. Publication is automatic after the release tests pass.
+
+Ordinary merges update the proposed release and run CI. Registry publishing is
+driven by Release Please's `release_created` output.
+
+The [configuration](release-please-config.json) and manifest start from
+`v0.3.5-beta.1`. To target **`0.4.0`** for the first release, include Release Please's
+native version override in the **final squash commit body of this migration**:
+
+```text
+Release-As: 0.4.0
+```
+
+This applies to the first release containing that commit. Subsequent versions
+follow Conventional Commits: `fix` and `perf` bump the patch, `feat` bumps the minor,
+and breaking changes bump the minor while the project is below `1.0.0`. Include the
+[Rust API migration](#rust-api-migration) when reviewing the first release notes.
+
+### Repository setup
+
+- Install a release GitHub App on this repository with **Contents**, **Issues**,
+  and **Pull requests** read/write permissions. Add its App ID and private key as
+  repository secrets `RELEASE_APP_ID` and `RELEASE_APP_PRIVATE_KEY`. The App token
+  allows CI to run on the release PR that it creates.
+- Configure `main` to require the **CI** and **PR title** checks before merging.
+  Enable squash merging and use the PR title as the squash commit title so Release
+  Please can determine the version from the merged history.
+- Configure trusted publishers for `PyDataBlog/simstring_rs`, workflow **`CI.yml`**,
+  and environment **`testpypi`** on TestPyPI / **`pypi`** on PyPI. These environments
+  use automatic publishing, with no required reviewers.
+- Provide `CARGO_REGISTRY_TOKEN` with permission to publish `simstring_rust`.
+
+### Retrying publication
+
+Use **Re-run failed jobs** on the original release workflow run. This reuses Release
+Please's outputs and the successful build artifacts. Already-published crate
+versions and wheel files are skipped. Check the publishing jobs to confirm that
+the packages are available in their registries.
 
 ## Rust API migration
 
+Version `0.4.0` introduces breaking changes for custom Rust trait implementations.
 The read-only query engine preserves the usual `HashDb` and `Searcher` calls,
 as well as Python method signatures. Custom Rust implementations need these updates:
 
@@ -147,6 +170,13 @@ Both search methods now apply exact score filtering at threshold boundaries.
 ## Contributing
 
 Contributions are welcome! Please open an issue or submit a pull request on GitHub.
+
+Use [Conventional Commits](https://www.conventionalcommits.org/) for PR titles,
+for example `fix(search): handle empty queries` or `feat(bindings): add an extractor`.
+Mark breaking changes with `!`, such as `refactor(api)!: change the Database trait`,
+and describe the migration in the PR. PR titles are checked automatically and
+become the squash commit titles used by Release Please.
+
 License
 
 This project is licensed under the MIT License.

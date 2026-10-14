@@ -28,8 +28,7 @@ A native Rust implementation of the CPMerge algorithm, designed for approximate 
 
 ## Installation
 
-Requires Rust 1.88 or newer (edition 2024). Python bindings require Python 3.10+
-and are tested on Python 3.10–3.15.
+Requires Rust 1.88 or newer (edition 2024). Python bindings support Python 3.10+.
 See [Rust API migration](#rust-api-migration) for the read-only query engine's trait changes.
 
 Add `simstring_rust` to your `Cargo.toml`:

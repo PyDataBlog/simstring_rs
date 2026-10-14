@@ -42,6 +42,10 @@ harness = false
 name = "micro"
 harness = false
 
+[[bench]]
+name = "insert"
+harness = false
+
 [profile.release]
 debug = true
 

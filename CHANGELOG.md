@@ -1,3 +1,23 @@
+# Changelog
+
+## [0.4.0](https://github.com/PyDataBlog/simstring_rs/compare/v0.3.5-beta.1...v0.4.0) (2026-10-14)
+
+
+### Features
+
+* switch to release please for cd ([#94](https://github.com/PyDataBlog/simstring_rs/issues/94)) ([372ba1c](https://github.com/PyDataBlog/simstring_rs/commit/372ba1ccecc3e8a75c9403bb78470d2b6dcf8a32))
+
+
+### Bug Fixes
+
+* **ci:** promote prerelease versions to stable releases ([#96](https://github.com/PyDataBlog/simstring_rs/issues/96)) ([cd92d29](https://github.com/PyDataBlog/simstring_rs/commit/cd92d29c474d85beae5c684b570e62a6dfd8c0a1))
+* **tests:** Add python bindings to the test coverage report ([#58](https://github.com/PyDataBlog/simstring_rs/issues/58)) ([248b13c](https://github.com/PyDataBlog/simstring_rs/commit/248b13c452d8387b5983ed3fc0d0dd7d3880ff7d))
+
+
+### Performance Improvements
+
+* **search:** optimize Rust and Python search engine ([#84](https://github.com/PyDataBlog/simstring_rs/issues/84)) ([7920aa5](https://github.com/PyDataBlog/simstring_rs/commit/7920aa5228f9d556ab235f2ce5963aeba71ccb58))
+
 ## What's Changed in 0.3.5-beta.1
 * fix(ci): MacOS runner jobs fail on cache keys by [@PyDataBlog](https://github.com/PyDataBlog) in [#56](https://github.com/PyDataBlog/simstring_rs/pull/56)
 * fix(ci): Re-add git cliff output to release notes by [@PyDataBlog](https://github.com/PyDataBlog) in [#55](https://github.com/PyDataBlog/simstring_rs/pull/55)

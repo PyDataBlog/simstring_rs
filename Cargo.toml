@@ -40,9 +40,3 @@ harness = false
 
 [profile.release]
 debug = true
-
-[package.metadata.release]
-pre-release-hook = ["git-cliff", "-o", "CHANGELOG.md", "--tag", "{{version}}"]
-push = false
-publish = false
-pre-release-commit-message = "chore(release): {{version}}"

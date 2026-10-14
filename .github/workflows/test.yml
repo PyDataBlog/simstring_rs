@@ -1,0 +1,296 @@
+name: Build and test
+
+on:
+  workflow_call:
+    inputs:
+      ref:
+        description: Commit to build and test
+        required: true
+        type: string
+      artifact-prefix:
+        description: Distinguishes CI wheels from release wheels in the same run
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  test:
+    name: Test on ${{ matrix.target }} / ${{ matrix.rust }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            rust: stable
+            target: x86_64-unknown-linux-gnu
+          - os: ubuntu-latest
+            rust: stable
+            target: aarch64-unknown-linux-gnu
+          - os: windows-latest
+            rust: stable
+            target: x86_64-pc-windows-msvc
+          - os: macos-15-intel
+            rust: stable
+            target: x86_64-apple-darwin
+          - os: macos-latest
+            rust: stable
+            target: aarch64-apple-darwin
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ matrix.rust }}
+          target: ${{ matrix.target }}
+          components: rustfmt, clippy
+
+      - name: Install cross
+        if: matrix.target == 'aarch64-unknown-linux-gnu'
+        run: cargo install cross
+
+      - name: Set up cargo cache
+        if: runner.os != 'macOS'
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-${{ matrix.target }}-cargo-${{ hashFiles('Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-${{ matrix.target }}-cargo-
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          # GIL-enabled CPython: the abi3 wheels built here cannot be
+          # installed on free-threaded (3.14t) interpreters.
+          python-version: "3.14"
+
+      - name: Cache python dependencies
+        if: runner.os != 'macOS'
+        uses: actions/cache@v6
+        with:
+          path: |
+            .venv
+          key: ${{ runner.os }}-${{ matrix.target }}-py314-abi3-pip-${{ hashFiles('pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ matrix.target }}-py314-abi3-pip-
+
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+
+      - name: Run clippy
+        if: matrix.target != 'aarch64-unknown-linux-gnu'
+        run: cargo clippy --target ${{ matrix.target }} -- -D warnings
+
+      - name: Run clippy (cross)
+        if: matrix.target == 'aarch64-unknown-linux-gnu'
+        run: cross clippy --target ${{ matrix.target }} -- -D warnings
+
+      - name: Run tests
+        if: matrix.target != 'aarch64-unknown-linux-gnu'
+        run: cargo test --target ${{ matrix.target }} --verbose
+
+      - name: Run tests (cross)
+        if: matrix.target == 'aarch64-unknown-linux-gnu'
+        run: cross test --target ${{ matrix.target }} --verbose
+
+      - name: Run Python binding tests
+        shell: bash
+        run: |
+          pip install uv
+          uv venv --clear --python python
+          if [ "$RUNNER_OS" == "Windows" ]; then
+            source .venv/Scripts/activate
+          else
+            source .venv/bin/activate
+          fi
+          uv pip install maturin pytest
+          rm -rf target/wheels
+          maturin build --release --locked --interpreter python
+          uv pip install target/wheels/*.whl
+          pytest tests/python/ -vv
+
+      - name: Build
+        if: matrix.target != 'aarch64-unknown-linux-gnu'
+        run: cargo build --target ${{ matrix.target }} --verbose
+
+      - name: Build (cross)
+        if: matrix.target == 'aarch64-unknown-linux-gnu'
+        run: cross build --target ${{ matrix.target }} --verbose
+
+      - name: Check documentation
+        run: cargo doc --no-deps --document-private-items
+
+  build_wheels:
+    name: Build wheels on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref }}
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.10"
+
+      - name: Build wheels
+        uses: PyO3/maturin-action@v1
+        with:
+          command: build
+          args: --release --locked --out dist
+          # Build universal2 wheels on macOS
+          target: ${{ runner.os == 'macOS' && 'universal2-apple-darwin' || '' }}
+
+      - name: Upload wheels
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ inputs.artifact-prefix }}-wheels-${{ matrix.os }}
+          path: dist
+          if-no-files-found: error
+
+  build_wheels_linux:
+    name: Build manylinux wheels
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref }}
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.10"
+
+      - name: Build wheels
+        uses: PyO3/maturin-action@v1
+        with:
+          command: build
+          args: --release --locked --out dist
+          manylinux: "2014"
+
+      - name: Upload wheels
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ inputs.artifact-prefix }}-wheels-linux
+          path: dist
+          if-no-files-found: error
+
+  test_wheels:
+    name: Test wheels on ${{ matrix.os }} / Python ${{ matrix.python-version }}
+    needs: [build_wheels, build_wheels_linux]
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-14, macos-15, macos-latest]
+        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14", "3.15"]
+        exclude:
+          # Exclude Python 3.10 on macos-14 due to known issues with setup-python
+          - os: macos-14
+            python-version: "3.10"
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref }}
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: ${{ inputs.artifact-prefix }}-wheels-*
+          path: dist
+          merge-multiple: true
+
+      - name: Cache python dependencies
+        if: runner.os != 'macOS'
+        uses: actions/cache@v6
+        with:
+          path: |
+            .venv
+          key: ${{ runner.os }}-pip-${{ matrix.python-version }}-${{ hashFiles('pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-${{ matrix.python-version }}-
+
+      - name: Install wheel and test dependencies
+        shell: bash
+        run: |
+          pip install uv
+          uv venv --clear
+          if [ "$RUNNER_OS" == "Windows" ]; then
+            source .venv/Scripts/activate
+          else
+            source .venv/bin/activate
+          fi
+          uv pip install pytest
+          uv pip install simstring-rust --no-index --find-links dist/ --force-reinstall
+
+      - name: Run Python binding tests
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" == "Windows" ]; then
+            source .venv/Scripts/activate
+          else
+            source .venv/bin/activate
+          fi
+          pytest tests/python/ -vv
+
+  run-examples:
+    name: Run Examples
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Run Rust example
+        run: cargo run --example basic --release
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+
+      - name: Cache python dependencies
+        uses: actions/cache@v6
+        with:
+          path: |
+            .venv
+          key: ${{ runner.os }}-pip-${{ hashFiles('pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Run Python example
+        shell: bash
+        run: |
+          pip install uv
+          uv venv --clear
+          if [ "$RUNNER_OS" == "Windows" ]; then
+            source .venv/Scripts/activate
+          else
+            source .venv/bin/activate
+          fi
+          uv pip install maturin
+          rm -rf target/wheels
+          maturin build --release --locked
+          uv pip install target/wheels/*.whl
+          python examples/python_basic.py

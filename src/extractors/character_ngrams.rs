@@ -23,6 +23,15 @@ impl Default for CharacterNgrams {
 }
 
 impl FeatureExtractor for CharacterNgrams {
+    fn feature_count_hint(&self, text: &str) -> usize {
+        // Exact for ASCII text; an upper bound otherwise, as bytes >= characters.
+        if self.n == 0 {
+            0
+        } else {
+            text.len() + self.n - 1
+        }
+    }
+
     fn visit_features(&self, text: &str, visitor: &mut dyn FnMut(&str)) {
         if self.n == 0 {
             return;
@@ -33,7 +42,10 @@ impl FeatureExtractor for CharacterNgrams {
         padded.push_str(&self.padding);
 
         // Borrow n-grams directly from the padded text, avoiding an allocation per gram.
-        let mut counter: FxHashMap<&str, usize> = FxHashMap::default();
+        // Sizing the counter for every gram up front avoids rehashing as it fills.
+        let grams = padded.len().saturating_add(1).saturating_sub(self.n);
+        let mut counter: FxHashMap<&str, usize> =
+            FxHashMap::with_capacity_and_hasher(grams, Default::default());
         let mut counted = String::new();
         let mut number = itoa::Buffer::new();
         let mut emit = |start, end| {

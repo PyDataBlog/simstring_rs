@@ -38,16 +38,14 @@ impl<M: Measure + ?Sized> Measure for &M {
     }
 }
 
-// Helper function which computes the number of intersections between to vec of Spur
+// Size of the intersection of two sorted feature slices. Search never calls this (it
+// counts overlaps in the join), and feature sets are short, so a scalar merge suffices.
 pub(crate) fn compute_intersection_size(x: &[Spur], y: &[Spur]) -> usize {
-    let mut intersection_size = 0;
-    let mut i = 0;
-    let mut j = 0;
-
+    let (mut i, mut j, mut count) = (0, 0, 0);
     while i < x.len() && j < y.len() {
         match x[i].cmp(&y[j]) {
             std::cmp::Ordering::Equal => {
-                intersection_size += 1;
+                count += 1;
                 i += 1;
                 j += 1;
             }
@@ -55,8 +53,7 @@ pub(crate) fn compute_intersection_size(x: &[Spur], y: &[Spur]) -> usize {
             std::cmp::Ordering::Greater => j += 1,
         }
     }
-
-    intersection_size
+    count
 }
 pub use cosine::Cosine;
 pub use dice::Dice;

@@ -5,7 +5,7 @@
 [![PyPI version](https://badge.fury.io/py/simstring-rust.svg)](https://badge.fury.io/py/simstring-rust)
 [![Python versions](https://img.shields.io/pypi/pyversions/simstring-rust.svg)](https://pypi.org/project/simstring-rust)
 [![Documentation](https://docs.rs/simstring_rust/badge.svg)](https://docs.rs/simstring_rust)
-[![Rust](https://img.shields.io/badge/rust-1.88%2B-blue.svg?maxAge=3600)](https://github.com/PyDataBlog/simstring_rs)
+[![Rust](https://img.shields.io/badge/rust-1.89%2B-blue.svg?maxAge=3600)](https://github.com/PyDataBlog/simstring_rs)
 [![Codecov](https://img.shields.io/codecov/c/github/PyDataBlog/simstring_rs?token=XJM8O8TD4U)](https://codecov.io/gh/PyDataBlog/simstring_rs)
 
 A native Rust implementation of the CPMerge algorithm, designed for approximate string matching. This crate is particularly useful for natural language processing tasks that require the retrieval of strings/texts from very large corpora (big amounts of texts). Currently, this crate supports both character and word-based N-grams feature generation, with plans to allow custom user-defined feature generation methods.
@@ -28,7 +28,7 @@ A native Rust implementation of the CPMerge algorithm, designed for approximate 
 
 ## Installation
 
-Requires Rust 1.88 or newer (edition 2024). Python bindings support Python 3.10+.
+Requires Rust 1.89 or newer (edition 2024). Python bindings support Python 3.10+.
 See [Rust API migration](#rust-api-migration) for the read-only query engine's trait changes.
 
 Add `simstring_rust` to your `Cargo.toml`:
@@ -159,6 +159,8 @@ as well as Python method signatures. Custom Rust implementations need these upda
   `get_features()` returns `Option<&[Spur]>`. Implement `feature_sizes()` as a
   sorted, unique slice of populated sizes. Each ID belongs to exactly one size
   bucket; stored features must be sorted and unique, using the same interner.
+  Optionally override `visit_postings()` to enumerate one feature's postings across
+  a size range directly; the default calls `lookup_strings()` once per size.
 - **Measure**: implement `similarity_from_counts(x_len, y_len, common) -> f64`.
   The default `similarity` intersects sorted feature sets and delegates to it.
   Search uses counts directly, so this method must agree with the pruning bounds.
@@ -166,6 +168,22 @@ as well as Python method signatures. Custom Rust implementations need these upda
 Unknown query features still contribute to similarity denominators. Duplicate
 insertions remain distinct results, and queries with no features return no results.
 Both search methods now apply exact score filtering at threshold boundaries.
+
+## Search performance
+
+Most search time goes to gathering postings and counting overlaps.
+`cargo bench --bench micro` measures end-to-end search (100 queries over
+`benches/data/company_names.txt`, Cosine, minimum of 30 runs). Measured on one x86_64
+machine, before and after the ScanCount and per-feature posting index changes:
+
+| n-gram | alpha | before | now |
+|---|---|---|---|
+| 2 | 0.6 | 5.22 ms | 4.14 ms |
+| 2 | 0.9 | 0.55 ms | 0.47 ms |
+| 3 | 0.6 | 2.93 ms | 1.66 ms |
+| 3 | 0.9 | 0.47 ms | 0.34 ms |
+| 4 | 0.6 | 2.28 ms | 1.07 ms |
+| 4 | 0.9 | 0.46 ms | 0.32 ms |
 
 ## Contributing
 

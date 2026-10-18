@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.5.0](https://github.com/PyDataBlog/simstring_rs/compare/v0.4.0...v0.5.0) (2026-10-18)
+
+
+### ⚠ BREAKING CHANGES
+
+* **search:** database::StringId is now u32; a HashDb holds at most u32::MAX strings.
+
+### Performance Improvements
+
+* **search:** optimize overlap joins & drop hashing in favour of feature index ([#91](https://github.com/PyDataBlog/simstring_rs/issues/91)) ([0b534db](https://github.com/PyDataBlog/simstring_rs/commit/0b534db7c5bb48818ecb8cd112ce246569e66e1e))
+
 ## [0.4.0](https://github.com/PyDataBlog/simstring_rs/compare/v0.3.5-beta.1...v0.4.0) (2026-10-14)
 
 

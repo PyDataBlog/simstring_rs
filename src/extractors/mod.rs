@@ -24,9 +24,15 @@ pub trait FeatureExtractor: Send + Sync {
     /// The borrowed string is valid only for the duration of the callback.
     fn visit_features(&self, text: &str, visitor: &mut dyn FnMut(&str));
 
+    /// Expected number of features for `text`, used to pre-size the feature vector.
+    /// An estimate is fine; the default of 0 disables pre-sizing.
+    fn feature_count_hint(&self, _text: &str) -> usize {
+        0
+    }
+
     /// Extracts features for insertion, sorted by interned ID.
     fn features(&self, text: &str, interner: &mut Rodeo) -> Vec<Spur> {
-        let mut features = Vec::new();
+        let mut features = Vec::with_capacity(self.feature_count_hint(text));
         self.visit_features(text, &mut |feature| {
             features.push(interner.get_or_intern(feature));
         });

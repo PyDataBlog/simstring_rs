@@ -34,6 +34,9 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
+          # On pull requests (including from forks), check out the PR head; otherwise
+          # both expressions are empty and the triggering repository/ref is used.
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
           ref: ${{ github.head_ref }}
           fetch-depth: 0
 

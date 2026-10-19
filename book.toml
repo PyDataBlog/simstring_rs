@@ -1,0 +1,17 @@
+[book]
+title = "simstring_rust"
+description = "Approximate string matching with the SimString/CPMerge algorithm — Rust crate and Python bindings."
+authors = ["Bernard Brenyah"]
+language = "en"
+src = "docs/src"
+
+[build]
+build-dir = "book"
+create-missing = true
+
+[output.html]
+default-theme = "rust"
+preferred-dark-theme = "navy"
+git-repository-url = "https://github.com/PyDataBlog/simstring_rs"
+edit-url-template = "https://github.com/PyDataBlog/simstring_rs/edit/main/{path}"
+site-url = "/simstring_rs/"

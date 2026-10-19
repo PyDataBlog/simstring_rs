@@ -9,8 +9,12 @@ use std::sync::Arc;
 /// allocation and shift.
 type FeaturePostings = Vec<(usize, Vec<StringId>)>;
 
+/// In-memory database implementation of [`Database`]; see its module docs for
+/// details.
 pub struct HashDb {
     feature_extractor: Arc<dyn FeatureExtractor>,
+    /// The indexed strings in insertion order: [`StringId`] `i` refers to
+    /// `strings[i]` until the next [`clear`](crate::Database::clear).
     pub strings: Vec<String>,
     string_features: Vec<Vec<Spur>>,
     /// Indexed by `Spur::into_usize()`: interner keys are dense, so no hashing is needed,
@@ -33,6 +37,9 @@ impl fmt::Debug for HashDb {
 }
 
 impl HashDb {
+    /// Creates an empty database whose feature strings are produced by
+    /// `feature_extractor`. Every string inserted afterwards is tokenized by
+    /// that extractor; queries later inherit the same scheme.
     pub fn new(feature_extractor: Arc<dyn FeatureExtractor>) -> Self {
         Self {
             feature_extractor,
@@ -44,10 +51,12 @@ impl HashDb {
         }
     }
 
+    /// Indexes `text`; see [`Database::insert`].
     pub fn insert(&mut self, text: String) {
         Database::insert(self, text);
     }
 
+    /// Removes every string; see [`Database::clear`].
     pub fn clear(&mut self) {
         Database::clear(self);
     }

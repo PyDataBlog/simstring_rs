@@ -30,3 +30,6 @@ classifiers = [
 [project.urls]
 Homepage = "https://github.com/PyDataBlog/simstring_rs"
 Repository = "https://github.com/PyDataBlog/simstring_rs"
+Documentation = "https://pydatablog.github.io/simstring_rs/"
+"Issue Tracker" = "https://github.com/PyDataBlog/simstring_rs/issues"
+Changelog = "https://github.com/PyDataBlog/simstring_rs/blob/main/CHANGELOG.md"

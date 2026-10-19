@@ -133,7 +133,9 @@ jobs:
         run: cross build --target ${{ matrix.target }} --verbose
 
       - name: Check documentation
-        run: RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --document-private-items
+        run: cargo doc --no-deps --document-private-items
+        env:
+          RUSTDOCFLAGS: "-D warnings"
 
   build_wheels:
     name: Build wheels on ${{ matrix.os }}

@@ -2,6 +2,16 @@ use super::Measure;
 use crate::database::Database;
 use std::cmp;
 
+/// Overlap coefficient of the two feature sets:
+/// `common / min(x_len, y_len)`.
+///
+/// The most permissive of the built-in measures: a string whose feature set
+/// fully contains the query's feature set scores `1.0`, regardless of how
+/// many extra features it has. Ideal for *containment-style* retrieval — the
+/// query `"apple"` scores `1.0` against `"apple juice"`, because every bigram
+/// of `"apple"` (`$a1`, `ap1`, `pp1`, `pl1`, `le1`, `e$1`) occurs there.
+///
+/// Two empty sets are `1.0`; exactly one empty side scores `0.0`.
 #[derive(Default, Clone, Copy)]
 pub struct Overlap;
 

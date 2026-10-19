@@ -1,6 +1,43 @@
 use crate::FeatureExtractor;
 use rustc_hash::FxHashMap;
 
+/// Character *n*-gram extractor, the default feature scheme for SimString.
+///
+/// The text is padded with `n - 1` copies of `endmarker` on both sides, and
+/// every window of `n` characters becomes one feature, occurrence-qualified:
+/// repeated grams get a 1-based occurrence counter suffix (see the module docs
+/// for the full rationale).
+///
+/// n-grams are taken over Unicode characters, not bytes: "héllo" with
+/// `n == 2` yields `$h1`, `hé1`, `él1`, `ll1`, `lo1`, `o$1` (padded with the
+/// endmarker). Setting `n == 0` produces no features at all, so a database
+/// built that way can never match anything.
+///
+/// # Default
+///
+/// [`Default`] selects the classic SimString setup: `n == 2`, endmarker `$`.
+///
+/// # Example
+///
+/// ```
+/// use simstring_rust::{extractors::CharacterNgrams, FeatureExtractor};
+///
+/// let mut features = Vec::new();
+/// CharacterNgrams::new(2, "$").visit_features("hello", &mut |feature| {
+///     features.push(feature.to_string());
+/// });
+/// assert_eq!(
+///     vec!["$h1", "he1", "el1", "ll1", "lo1", "o$1"],
+///     features
+/// );
+///
+/// // Runs of identical grams are kept distinct by the counter suffix.
+/// let mut ran = Vec::new();
+/// CharacterNgrams::new(2, "$").visit_features("aaa", &mut |feature| {
+///     ran.push(feature.to_string());
+/// });
+/// assert_eq!(vec!["$a1", "aa1", "aa2", "a$1"], ran);
+/// ```
 #[derive(Clone)]
 pub struct CharacterNgrams {
     n: usize,
@@ -8,6 +45,11 @@ pub struct CharacterNgrams {
 }
 
 impl CharacterNgrams {
+    /// Configures the extractor: window length `n` (in characters) and
+    /// `endmarker`, repeated `n - 1` times on each side of the text before
+    /// windows are taken. For `n == 1` no padding is added. A larger `n`
+    /// captures more context, but the query must then share longer runs of
+    /// characters before a match becomes possible; `n == 0` emits nothing.
     pub fn new(n: usize, endmarker: &str) -> Self {
         Self {
             n,

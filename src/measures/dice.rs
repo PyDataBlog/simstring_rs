@@ -1,6 +1,12 @@
 use super::Measure;
 use crate::database::Database;
 
+/// Dice coefficient of the two feature sets: `2 * common / (x_len + y_len)`.
+///
+/// The symmetric, harmonic-style counterpart of [`Overlap`](super::Overlap);
+/// also the measure used in the original SimString paper's default
+/// configuration. Two empty sets are defined as perfectly similar (`1.0`);
+/// exactly one empty side scores `0.0`.
 #[derive(Default, Clone, Copy)]
 pub struct Dice;
 

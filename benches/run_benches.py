@@ -1,19 +1,26 @@
 import json
 import subprocess
+import sys
 from pathlib import Path
 
 from compare_benches import compare_benchmarks
 
 
 def run_persistence_benchmark(benches_dir):
-    process = subprocess.run(
+    results = []
+    for command in [
         ["cargo", "bench", "--locked", "--bench", "persistence", "--", "--json"],
-        cwd=benches_dir.parent,
-        capture_output=True,
-        text=True,
-        check=True,
-    )
-    return json.loads(process.stdout)
+        [sys.executable, str(benches_dir / "bench_persistence.py")],
+    ]:
+        process = subprocess.run(
+            command,
+            cwd=benches_dir.parent,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        results.extend(json.loads(process.stdout))
+    return results
 
 
 def run_benchmarks():

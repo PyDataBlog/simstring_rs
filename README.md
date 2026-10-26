@@ -255,10 +255,11 @@ This project is licensed under the MIT License.
 
 The `benches/run_benches.py` harness compares several language bindings (Rust, Python, Julia, Ruby, C++).
 
-The CI job summary and benchmark PR comment also report Rust database build,
+The CI job summary and benchmark PR comment also report Rust and Python database build,
 save, and load medians, snapshot sizes, and sample counts for both corpora with
-2-, 3-, and 4-grams. Run `cargo bench --bench persistence -- --json` for the same
-persistence measurements in machine-readable form.
+2-, 3-, and 4-grams. Run `cargo bench --bench persistence -- --json` (Rust) or
+`python benches/bench_persistence.py` (Python bindings) for the persistence
+measurements in machine-readable form.
 
 - `git`, `autoconf`, `automake`, `libtool`, `make`, `python`, `uv` and a C++ compiler (`g++`) to build the C++ CLI.
 

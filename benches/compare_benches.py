@@ -21,6 +21,7 @@ def persistence_table(group):
     columns = {
         "parameters.dataset": "dataset",
         "parameters.ngram_size": "ngram_size",
+        "language": "language",
         "stats.build_ms": "build (ms)",
         "stats.save_ms": "save (ms)",
         "stats.load_ms": "load (ms)",
@@ -28,7 +29,7 @@ def persistence_table(group):
         "stats.iterations": "iterations",
     }
     return (
-        group.sort_values(["parameters.dataset", "parameters.ngram_size"])
+        group.sort_values(["parameters.dataset", "parameters.ngram_size", "language"])
         .loc[:, list(columns)]
         .rename(columns=columns)
         .to_markdown(index=False, floatfmt=".2f")
@@ -78,7 +79,7 @@ def compare_benchmarks():
 
                 if benchmark == "persistence":
                     f.write(
-                        "\nRust full-index snapshots; medians of seven runs after one warm-up, "
+                        "\nsimstring-rust native and Python bindings; medians of seven runs after one warm-up, "
                         "with a warm file cache. Build excludes source-file I/O; save includes "
                         "file sync and atomic replacement; load includes snapshot I/O, "
                         "checksum verification, and index validation.\n\n"

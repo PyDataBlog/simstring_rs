@@ -262,8 +262,10 @@ jobs:
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Run Rust example
-        run: cargo run --example basic --release
+      - name: Run Rust examples
+        run: |
+          cargo run --example basic --release
+          cargo run --example persistence --release
 
       - name: Set up Python
         uses: actions/setup-python@v7
@@ -279,7 +281,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pip-
 
-      - name: Run Python example
+      - name: Run Python examples
         shell: bash
         run: |
           pip install uv
@@ -294,3 +296,4 @@ jobs:
           maturin build --release --locked
           uv pip install target/wheels/*.whl
           python examples/python_basic.py
+          python examples/python_persistence.py

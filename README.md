@@ -261,6 +261,17 @@ save, and load medians, snapshot sizes, and sample counts for both corpora with
 `python benches/bench_persistence.py` (Python bindings) for the persistence
 measurements in machine-readable form.
 
+CI also checks insert and unranked Cosine search against the latest stable
+published crate, rebuilding release and PR sources with matching settings for
+Rust and Python. It uses company names, character/word 2–4 grams, and thresholds
+0.6/0.9. After three paired runs, cases slower by more than 5% are rechecked:
+confirmed >5% warns and confirmed >10% fails. The median and every recheck pair
+must exceed the threshold. Correctness mismatches and benchmark errors fail
+immediately. Raw samples and build metadata are uploaded as the
+`release-regression` artifact, with results in the existing benchmark comment.
+Run `.venv/bin/python benches/check_release.py --baseline 0.5.0` locally; Maturin
+must be installed, and each run needs a fresh `--output` directory.
+
 - `git`, `autoconf`, `automake`, `libtool`, `make`, `python`, `uv` and a C++ compiler (`g++`) to build the C++ CLI.
 
 The C++ sources are cloned into `benches/.simstring_cpp/` and a local copy of the `simstring` binary is installed

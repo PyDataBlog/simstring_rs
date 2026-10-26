@@ -79,6 +79,7 @@ jobs:
             ${{ runner.os }}-pip-
 
       - name: Run and Compare Benchmarks
+        id: benchmarks
         run: |
           # Install python dependencies
           pip install uv
@@ -96,11 +97,40 @@ jobs:
           echo "Running and Comparing Benchmarks..."
           python benches/run_benches.py
 
+      - name: Check insert and search against the release
+        run: |
+          .venv/bin/python -m unittest discover -s benches/release_check
+          .venv/bin/python benches/check_release.py
+
+      - name: Upload release regression samples
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-regression
+          path: |
+            target/release-regression/metadata.json
+            target/release-regression/results.json
+            target/release-regression/samples.jsonl
+            target/release-regression/report.md
+            target/release-regression/*/build.log
+            target/release-regression/*/install.json
+            target/release-regression/*/native/Cargo.lock
+            target/release-regression/package/*/Cargo.lock
+            target/release-regression/source/Cargo.lock
+
       - name: Add benchmark results to the job summary
-        run: cat BENCHMARKS.md >> "$GITHUB_STEP_SUMMARY"
+        if: always()
+        run: |
+          if [ "${{ steps.benchmarks.outcome }}" = "success" ]; then
+            cat BENCHMARKS.md >> "$GITHUB_STEP_SUMMARY"
+          fi
+          if [ -f target/release-regression/report.md ]; then
+            cat target/release-regression/report.md >> "$GITHUB_STEP_SUMMARY"
+          fi
 
       - name: Post benchmark results to PR
         if: >-
+          !cancelled() && steps.benchmarks.outcome == 'success' &&
           github.event_name == 'pull_request' &&
           github.event.pull_request.head.repo.full_name == github.repository &&
           github.actor != 'dependabot[bot]'
@@ -110,7 +140,9 @@ jobs:
           script: |
             const fs = require('fs');
             const benchmarks = fs.readFileSync('BENCHMARKS.md', 'utf8');
-            const body = `## Benchmark Results\n\n${benchmarks}`;
+            const regressionPath = 'target/release-regression/report.md';
+            const regression = fs.existsSync(regressionPath) ? fs.readFileSync(regressionPath, 'utf8') : '';
+            const body = `## Benchmark Results\n\n${benchmarks}\n${regression}`;
             const marker = '## Benchmark Results';
             const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner,

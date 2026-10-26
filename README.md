@@ -255,6 +255,11 @@ This project is licensed under the MIT License.
 
 The `benches/run_benches.py` harness compares several language bindings (Rust, Python, Julia, Ruby, C++).
 
+The CI job summary and benchmark PR comment also report Rust database build,
+save, and load medians, snapshot sizes, and sample counts for both corpora with
+2-, 3-, and 4-grams. Run `cargo bench --bench persistence -- --json` for the same
+persistence measurements in machine-readable form.
+
 - `git`, `autoconf`, `automake`, `libtool`, `make`, `python`, `uv` and a C++ compiler (`g++`) to build the C++ CLI.
 
 The C++ sources are cloned into `benches/.simstring_cpp/` and a local copy of the `simstring` binary is installed

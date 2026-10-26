@@ -5,6 +5,17 @@ from pathlib import Path
 from compare_benches import compare_benchmarks
 
 
+def run_persistence_benchmark(benches_dir):
+    process = subprocess.run(
+        ["cargo", "bench", "--locked", "--bench", "persistence", "--", "--json"],
+        cwd=benches_dir.parent,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    return json.loads(process.stdout)
+
+
 def run_benchmarks():
     benches_dir = Path(__file__).parent
     results = []
@@ -33,6 +44,8 @@ def run_benchmarks():
         results.extend(json.loads(process.stdout))
     else:
         print(f"Error running rust bench: {process.stderr}")
+
+    results.extend(run_persistence_benchmark(benches_dir))
 
     # Run Ruby benchmark
     process = subprocess.run(

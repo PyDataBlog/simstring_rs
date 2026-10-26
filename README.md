@@ -130,6 +130,12 @@ platforms. Unsupported format versions are rejected explicitly; v1 readers and
 extractor semantics are covered by shared compatibility fixtures. Loading
 temporarily holds the encoded payload and decoded data in memory.
 
+Feature IDs use 32-bit `Spur` keys in memory and zero-based `u32` values in v1
+snapshots. The maximum feature ID is `u32::MAX - 1`, allowing up to
+**4,294,967,295 distinct interned features**. This limit applies to the shared
+feature dictionary. String IDs and explicit sizes/counts use `u64` in snapshots
+and are converted to native `usize` values with capacity checks when loaded.
+
 Custom Rust extractors default to unsupported persistence. A wrapper that
 exactly matches a built-in extractor can delegate `persistence_config()`;
 arbitrary custom behavior and Python `CustomExtractor` objects cannot be saved.

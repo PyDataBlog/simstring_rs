@@ -1,6 +1,38 @@
 use super::*;
 use crate::{Cosine, Database, Searcher};
 
+#[test]
+fn feature_id_boundaries_match_spur() {
+    for id in [0, 1, i32::MAX as u32, u32::MAX - 1] {
+        let key = decode_feature_id(id).unwrap();
+        assert_eq!(key.into_usize() as u64, u64::from(id));
+        assert_eq!(encode_feature_id(key), id);
+    }
+    assert!(matches!(
+        decode_feature_id(u32::MAX),
+        Err(PersistenceError::InvalidSnapshot("feature ID overflow"))
+    ));
+}
+
+#[test]
+fn dictionary_count_includes_last_representable_feature_id() {
+    let capacity = u64::from(u32::MAX);
+    for len in [0, 1, capacity - 1, capacity] {
+        assert!(validate_dictionary_len(len).is_ok(), "count {len}");
+    }
+    for len in [capacity + 1, u64::MAX] {
+        assert!(
+            matches!(
+                validate_dictionary_len(len),
+                Err(PersistenceError::InvalidSnapshot(
+                    "too many dictionary entries"
+                ))
+            ),
+            "count {len}"
+        );
+    }
+}
+
 fn database() -> HashDb {
     let mut db = HashDb::new(Arc::new(CharacterNgrams::new(2, "$")));
     for text in ["hello", "help", "hello", "東京🍕", ""] {

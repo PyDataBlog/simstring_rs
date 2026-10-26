@@ -14,6 +14,8 @@ const MAGIC: &[u8; 8] = b"SIMSTRDB";
 const VERSION: u32 = 1;
 const HEADER_LEN: usize = 24;
 
+type FeatureIdV1 = u32;
+
 /// Errors returned when saving or loading a database snapshot.
 #[derive(Debug, Error)]
 #[non_exhaustive]
@@ -92,7 +94,7 @@ struct SnapshotV1 {
     extractor: ExtractorV1,
     strings: Vec<String>,
     dictionary: Vec<String>,
-    string_features: Vec<Vec<u32>>,
+    string_features: Vec<Vec<FeatureIdV1>>,
     postings: Vec<Vec<(u64, Vec<u64>)>>,
     feature_sizes: Vec<u64>,
 }
@@ -132,7 +134,7 @@ impl Serialize for SnapshotRef<'_> {
             &Sequence(
                 db.string_features
                     .iter()
-                    .map(|features| Sequence(features.iter().map(|key| key.into_usize() as u32))),
+                    .map(|features| Sequence(features.iter().copied().map(encode_feature_id))),
             ),
         )?;
         state.serialize_field(
@@ -155,10 +157,7 @@ impl Serialize for SnapshotRef<'_> {
 
 impl SnapshotV1 {
     fn restore(self) -> Result<HashDb> {
-        check(
-            self.dictionary.len() < u32::MAX as usize,
-            "too many dictionary entries",
-        )?;
+        validate_dictionary_len(self.dictionary.len() as u64)?;
         let mut interner: Rodeo =
             Rodeo::with_capacity(Capacity::for_strings(self.dictionary.len()));
         for (index, text) in self.dictionary.into_iter().enumerate() {
@@ -174,10 +173,7 @@ impl SnapshotV1 {
                 .map(|features| {
                     features
                         .into_iter()
-                        .map(|id| {
-                            Spur::try_from_usize(id as usize)
-                                .ok_or(PersistenceError::InvalidSnapshot("feature ID overflow"))
-                        })
+                        .map(decode_feature_id)
                         .collect::<Result<_>>()
                 })
                 .collect::<Result<_>>()?,
@@ -280,6 +276,7 @@ impl HashDb {
     }
 
     fn validate_snapshot(&self) -> Result<()> {
+        validate_dictionary_len(self.interner.len() as u64)?;
         check(
             self.strings.len() == self.string_features.len(),
             "string/feature count mismatch",
@@ -359,6 +356,26 @@ fn check(valid: bool, message: &'static str) -> Result<()> {
     } else {
         Err(PersistenceError::InvalidSnapshot(message))
     }
+}
+
+fn encode_feature_id(key: Spur) -> FeatureIdV1 {
+    FeatureIdV1::try_from(key.into_usize()).expect("validated v1 feature ID")
+}
+
+fn decode_feature_id(id: FeatureIdV1) -> Result<Spur> {
+    usize::try_from(id)
+        .ok()
+        .and_then(Spur::try_from_usize)
+        .ok_or(PersistenceError::InvalidSnapshot("feature ID overflow"))
+}
+
+fn validate_dictionary_len(len: u64) -> Result<()> {
+    check(
+        len.checked_sub(1).is_none_or(|last| {
+            FeatureIdV1::try_from(last).is_ok_and(|id| decode_feature_id(id).is_ok())
+        }),
+        "too many dictionary entries",
+    )
 }
 
 fn to_usize(value: u64) -> Result<usize> {

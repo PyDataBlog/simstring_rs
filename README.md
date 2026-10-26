@@ -87,6 +87,57 @@ fn main() {
 }
 ```
 
+## Saving and loading databases
+
+Snapshots store the full index and its `CharacterNgrams` or `WordNgrams`
+configuration. Loading preserves insertion order and duplicates, and returns a
+mutable database without extracting corpus features again.
+
+```rust
+use simstring_rust::{CharacterNgrams, HashDb};
+use std::sync::Arc;
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let mut db = HashDb::new(Arc::new(CharacterNgrams::new(2, "$")));
+    db.insert("hello".into());
+    db.save_to_file(".", "names.ssdb")?;
+    let mut restored = HashDb::load_from_file(".", "names.ssdb")?;
+    restored.insert("help".into());
+    Ok(())
+}
+```
+
+```python
+from pathlib import Path
+from simstring_rust.database import HashDb
+from simstring_rust.extractors import CharacterNgrams
+
+db = HashDb(CharacterNgrams(2, "$"))
+db.insert("hello")
+db.save_to_file(Path("."), "names.ssdb")
+restored = HashDb.load_from_file(Path("."), "names.ssdb")
+restored.insert("help")
+```
+
+The directory must exist and `file_name` must be a single filename. Saving
+atomically replaces an existing file after a successful write. Rust returns
+`PersistenceError`; Python raises `OSError` for filesystem errors, `ValueError`
+for invalid snapshots or filenames, and `TypeError` for unsupported extractors.
+
+The v1 format uses a versioned header, CRC32 checksum, and Postcard payload with
+portable integer IDs. Rust and Python share the format across supported
+platforms. Unsupported format versions are rejected explicitly; v1 readers and
+extractor semantics are covered by shared compatibility fixtures. Loading
+temporarily holds the encoded payload and decoded data in memory.
+
+Custom Rust extractors default to unsupported persistence. A wrapper that
+exactly matches a built-in extractor can delegate `persistence_config()`;
+arbitrary custom behavior and Python `CustomExtractor` objects cannot be saved.
+
+See `examples/persistence.rs` and `examples/python_persistence.py` for runnable
+examples. Measure indexing, saving, and loading with
+`cargo bench --bench persistence -- unigrams` (medians of seven runs; warm file cache).
+
 ## Releasing
 
 [Release Please](https://github.com/googleapis/release-please) manages stable

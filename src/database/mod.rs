@@ -41,4 +41,4 @@ pub trait Database: Send + Sync {
     fn total_strings(&self) -> usize;
 }
 
-pub use hashdb::HashDb;
+pub use hashdb::{HashDb, PersistenceError};

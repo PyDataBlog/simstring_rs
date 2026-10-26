@@ -4,6 +4,9 @@ use lasso::{Key, Rodeo, Spur};
 use std::fmt;
 use std::sync::Arc;
 
+mod persistence;
+pub use persistence::PersistenceError;
+
 /// One feature's posting lists as `(size, ids)` pairs sorted by size: `ids` holds the
 /// strings with `size` features. One vector per feature keeps inserts to a single
 /// allocation and shift.

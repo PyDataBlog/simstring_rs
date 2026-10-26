@@ -4,6 +4,19 @@ mod word_ngrams;
 use lasso::{Rodeo, Spur};
 use rustc_hash::FxHashMap;
 
+/// Configuration for restoring an extractor supported by database snapshots.
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum ExtractorConfig {
+    /// `padding` is the expanded padding on each side of the text.
+    Character { n: usize, padding: String },
+    Word {
+        n: usize,
+        splitter: String,
+        padder: String,
+    },
+}
+
 /// Visits raw custom features with their occurrence counts appended.
 pub(crate) fn visit_counted_features(features: &[String], visitor: &mut dyn FnMut(&str)) {
     let mut counter: FxHashMap<&str, usize> = FxHashMap::default();
@@ -20,6 +33,13 @@ pub(crate) fn visit_counted_features(features: &[String], visitor: &mut dyn FnMu
 }
 
 pub trait FeatureExtractor: Send + Sync {
+    /// Opts into snapshots using the given built-in extractor's behavior.
+    /// Implementations returning `Some` must generate the same features as that
+    /// configuration. Custom extractors are unsupported by default.
+    fn persistence_config(&self) -> Option<ExtractorConfig> {
+        None
+    }
+
     /// Visits occurrence-qualified features. Each feature must be unique within a text.
     /// The borrowed string is valid only for the duration of the callback.
     fn visit_features(&self, text: &str, visitor: &mut dyn FnMut(&str));

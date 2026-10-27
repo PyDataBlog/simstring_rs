@@ -1,4 +1,5 @@
 use crate::FeatureExtractor;
+use crate::extractors::ExtractorConfig;
 use rustc_hash::FxHashMap;
 
 #[derive(Clone)]
@@ -8,6 +9,10 @@ pub struct CharacterNgrams {
 }
 
 impl CharacterNgrams {
+    pub(crate) fn from_padding(n: usize, padding: String) -> Self {
+        Self { n, padding }
+    }
+
     pub fn new(n: usize, endmarker: &str) -> Self {
         Self {
             n,
@@ -23,6 +28,13 @@ impl Default for CharacterNgrams {
 }
 
 impl FeatureExtractor for CharacterNgrams {
+    fn persistence_config(&self) -> Option<ExtractorConfig> {
+        Some(ExtractorConfig::Character {
+            n: self.n,
+            padding: self.padding.clone(),
+        })
+    }
+
     fn feature_count_hint(&self, text: &str) -> usize {
         // Exact for ASCII text; an upper bound otherwise, as bytes >= characters.
         if self.n == 0 {

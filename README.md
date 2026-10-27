@@ -87,6 +87,63 @@ fn main() {
 }
 ```
 
+## Saving and loading databases
+
+Snapshots store the full index and its `CharacterNgrams` or `WordNgrams`
+configuration. Loading preserves insertion order and duplicates, and returns a
+mutable database without extracting corpus features again.
+
+```rust
+use simstring_rust::{CharacterNgrams, HashDb};
+use std::sync::Arc;
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let mut db = HashDb::new(Arc::new(CharacterNgrams::new(2, "$")));
+    db.insert("hello".into());
+    db.save_to_file(".", "names.ssdb")?;
+    let mut restored = HashDb::load_from_file(".", "names.ssdb")?;
+    restored.insert("help".into());
+    Ok(())
+}
+```
+
+```python
+from pathlib import Path
+from simstring_rust.database import HashDb
+from simstring_rust.extractors import CharacterNgrams
+
+db = HashDb(CharacterNgrams(2, "$"))
+db.insert("hello")
+db.save_to_file(Path("."), "names.ssdb")
+restored = HashDb.load_from_file(Path("."), "names.ssdb")
+restored.insert("help")
+```
+
+The directory must exist and `file_name` must be a single filename. Saving
+atomically replaces an existing file after a successful write. Rust returns
+`PersistenceError`; Python raises `OSError` for filesystem errors, `ValueError`
+for invalid snapshots or filenames, and `TypeError` for unsupported extractors.
+
+The v1 format uses a versioned header, CRC32 checksum, and Postcard payload with
+portable integer IDs. Rust and Python share the format across supported
+platforms. Unsupported format versions are rejected explicitly; v1 readers and
+extractor semantics are covered by shared compatibility fixtures. Loading
+temporarily holds the encoded payload and decoded data in memory.
+
+Feature IDs use 32-bit `Spur` keys in memory and zero-based `u32` values in v1
+snapshots. The maximum feature ID is `u32::MAX - 1`, allowing up to
+**4,294,967,295 distinct interned features**. This limit applies to the shared
+feature dictionary. String IDs and explicit sizes/counts use `u64` in snapshots
+and are converted to native `usize` values with capacity checks when loaded.
+
+Custom Rust extractors default to unsupported persistence. A wrapper that
+exactly matches a built-in extractor can delegate `persistence_config()`;
+arbitrary custom behavior and Python `CustomExtractor` objects cannot be saved.
+
+See `examples/persistence.rs` and `examples/python_persistence.py` for runnable
+examples. Measure indexing, saving, and loading with
+`cargo bench --bench persistence -- unigrams` (medians of seven runs; warm file cache).
+
 ## Releasing
 
 [Release Please](https://github.com/googleapis/release-please) manages stable
@@ -197,6 +254,23 @@ This project is licensed under the MIT License.
 ## Benchmarks
 
 The `benches/run_benches.py` harness compares several language bindings (Rust, Python, Julia, Ruby, C++).
+
+The CI job summary and benchmark PR comment also report Rust and Python database build,
+save, and load medians, snapshot sizes, and sample counts for both corpora with
+2-, 3-, and 4-grams. Run `cargo bench --bench persistence -- --json` (Rust) or
+`python benches/bench_persistence.py` (Python bindings) for the persistence
+measurements in machine-readable form.
+
+CI also checks insert and unranked Cosine search against the latest stable
+published crate, rebuilding release and PR sources with matching settings for
+Rust and Python. It uses company names, character/word 2–4 grams, and thresholds
+0.6/0.9. After three paired runs, cases slower by more than 5% are rechecked:
+confirmed >5% warns and confirmed >10% fails. The median and every recheck pair
+must exceed the threshold. Correctness mismatches and benchmark errors fail
+immediately. Raw samples and build metadata are uploaded as the
+`release-regression` artifact, with results in the existing benchmark comment.
+Run `.venv/bin/python benches/check_release.py --baseline 0.5.0` locally; Maturin
+must be installed, and each run needs a fresh `--output` directory.
 
 - `git`, `autoconf`, `automake`, `libtool`, `make`, `python`, `uv` and a C++ compiler (`g++`) to build the C++ CLI.
 

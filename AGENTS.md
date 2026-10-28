@@ -156,10 +156,11 @@ cargo run --example basic --release
 cargo run --example persistence --release
 ```
 
-For Python-facing changes, use a clean virtual environment and test the installed wheel:
+Install `uv` using its standalone installer, `pipx`, or your package manager. Do not
+install it into an externally managed system Python. Then use a clean virtual environment
+and test the installed wheel:
 
 ```bash
-python -m pip install uv
 uv venv --clear
 source .venv/bin/activate        # Windows: .venv\Scripts\activate
 uv pip install maturin pytest

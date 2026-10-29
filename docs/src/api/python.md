@@ -67,6 +67,12 @@ All are stateless constructors; call e.g. `Cosine()` and use the result as
 - `clear()` — drop everything, including the interner's memory.
 - `strings() -> list[str]` — insertion-order strings; index `i` is string ID `i`.
 - `__len__()` — the number of indexed strings.
+- `save_to_file(path, file_name)` — write a versioned snapshot into an existing
+  directory; raises `OSError` for filesystem errors, `ValueError` for invalid
+  snapshots or file names, and `TypeError` for unsupported extractors.
+- `HashDb.load_from_file(path, file_name)` — static method; restore a database
+  and its built-in extractor from a snapshot. Raises `OSError` for filesystem
+  errors and `ValueError` for invalid snapshots or file names.
 
 ```python
 >>> db = HashDb(CharacterNgrams(2, '$'))

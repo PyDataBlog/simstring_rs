@@ -270,13 +270,17 @@ impl PyWordNgrams {
 ///     TypeError: If ``extractor`` has no ``apply`` attribute.
 ///
 /// Examples:
+/// ```text
+///     >>> from simstring_rust.extractors import CustomExtractor
 ///     >>> class LowerBigrams:
 ///     ...     def apply(self, text):
 ///     ...         tokens = text.lower().split()
-///     ...         return [f"{a}|{b}" for a, b in zip(tokens, tokens\[1:\])]
+///     ...         return [f"{a}|{b}" for a, b in zip(tokens, tokens[1:])]
 ///     >>> extractor = CustomExtractor(LowerBigrams())
 ///     >>> extractor.apply('Some Custom Text')
 ///     ['some|custom1', 'custom|text1']
+///
+/// ```
 #[pyclass(name = "CustomExtractor")]
 #[derive(Clone)]
 struct PyCustomExtractor(CustomExtractorInner);
@@ -580,9 +584,15 @@ impl PyHashDb {
 ///     TypeError: If ``measure`` is not one of the supported measures.
 ///
 /// Examples:
+///     >>> from simstring_rust.database import HashDb
+///     >>> from simstring_rust.extractors import CharacterNgrams
+///     >>> from simstring_rust.measures import Cosine
 ///     >>> from simstring_rust.searcher import Searcher
+///     >>> db = HashDb(CharacterNgrams(2, '$'))
+///     >>> db.insert('apple')
 ///     >>> searcher = Searcher(db, Cosine())
-///     >>> searcher.search('appel', 0.8)
+///     >>> searcher.search('appl', 0.7)
+///     ['apple']
 #[pyclass(name = "Searcher")]
 struct PySearcher {
     db: Py<PyHashDb>,

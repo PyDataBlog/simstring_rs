@@ -16,7 +16,7 @@ use crate::extractors::FeatureExtractor;
 use lasso::{Rodeo, Spur};
 
 /// Identifier of an indexed string: `i` equals the position of the string in
-/// the database's storage. Unique per migration window — after
+/// the database's storage. Unique until the database is cleared — after
 /// [`clear`](Database::clear), IDs refer to the new contents.
 pub type StringId = usize;
 
@@ -68,7 +68,7 @@ pub trait Database: Send + Sync {
     /// same scheme.
     fn feature_extractor(&self) -> &dyn FeatureExtractor;
     /// Largest populated feature-set size, or `0` for an empty database.
-    /// Bounds the candidate size range a documentary-level query can match in.
+    /// Bounds the candidate size range a query can match in.
     fn max_feature_len(&self) -> usize;
     /// The interner shared by all feature IDs in this database.
     fn interner(&self) -> &Rodeo;

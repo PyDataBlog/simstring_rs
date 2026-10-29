@@ -42,9 +42,13 @@ things this design means:
 - **Sizes partition the corpus.** Each ID belongs to exactly one feature-size
   bucket; search visits only the buckets its candidates can possibly match.
 
-`clear()` empties strings, postings, and the interner. There is no on-disk
-format yet ([issue #9](https://github.com/PyDataBlog/simstring_rs/issues/9));
-build a database per process.
+`clear()` empties strings, postings, and the interner. Snapshots can be saved
+and restored with `HashDb::save_to_file` / `load_from_file`. Built-in
+extractors are supported; Rust custom extractors must opt in and Python custom
+extractors are unsupported. For details, see the
+[persistence documentation](https://github.com/PyDataBlog/simstring_rs#saving-and-loading-databases).
+Loading a raw corpus file directly is not supported yet
+([issue #9](https://github.com/PyDataBlog/simstring_rs/issues/9)).
 
 ## Search
 
@@ -98,5 +102,6 @@ string reaches 0.8. Practical starting points:
 | Loose "related" matches | 0.6–0.7 |
 | Containment / substring patterns | `Overlap` with a high alpha (0.9+) |
 
-Higher window sizes (`n`) behave like lower alphas: results get stricter, so
-bump `n` before hacking `alpha` towards `1.0` if query traffic is noisy.
+Higher window sizes (`n`) require longer shared runs and can make matches
+stricter. Unlike raising `alpha`, changing `n` changes the feature sets and
+does not guarantee that the results are a subset of the previous results.

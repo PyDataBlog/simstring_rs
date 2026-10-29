@@ -263,8 +263,9 @@ Bug reports, feature requests, and pull requests are welcome — start with
 [CONTRIBUTING.md](https://github.com/PyDataBlog/simstring_rs/blob/main/CONTRIBUTING.md)
 for the local setup, test commands, and release process.
 
-Contributors using coding agents should start with [AGENTS.md](AGENTS.md) for repository
-layout, behavioral contracts, acceptance criteria, and validation steps.
+Contributors using coding agents should start with
+[AGENTS.md](https://github.com/PyDataBlog/simstring_rs/blob/main/AGENTS.md) for
+repository layout, behavioral contracts, acceptance criteria, and validation steps.
 
 ## License
 

@@ -6,7 +6,7 @@ algorithm (Okazaki & Tsujii, 2010), with Python bindings shipped as the
 
 SimString answers threshold queries over a corpus: *which strings are at
 least `alpha` similar to this query?* Thanks to the CPMerge algorithm, the
-answer is **exact** — every string above the threshold is returned, and none
+answer is **exact** — every string at or above the threshold is returned, and none
 are fabricated — while remaining fast enough for corpora with hundreds of
 thousands to millions of entries.
 
@@ -19,7 +19,7 @@ from simstring_rust.searcher import Searcher
 db = HashDb(CharacterNgrams(2, "$"))
 db.insert("apple")
 
-Searcher(db, Cosine()).search("appel", 0.8)
+Searcher(db, Cosine()).search("appl", 0.7)
 # ['apple']
 ```
 

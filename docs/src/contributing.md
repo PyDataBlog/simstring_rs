@@ -34,8 +34,8 @@ Keep numbers, snippets, and outcome claims in sync with the source of truth:
   [Conventional Commits](https://www.conventionalcommits.org/), e.g.
   `fix(search): handle empty queries` or `feat(bindings): add an extractor`;
   breaking changes get `!` and a migration paragraph.
-- Docs-only changes may be merged faster than code changes as CI only
-  rebuilds the site.
+- Docs-only changes run the full CI checks; changes to the site also trigger
+  the docs build.
 
 ## Standards
 

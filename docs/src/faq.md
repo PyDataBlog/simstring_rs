@@ -9,7 +9,9 @@ outward-rounded measure bounds guarantee every string with
 score check without meeting the threshold.
 
 **Where do files and other storage engines fit?**
-Not yet: `HashDb` is the only built-in database ([issue
+`HashDb` can save and load versioned snapshots (`save_to_file` /
+`load_from_file`). Loading a raw corpus file directly and alternative storage
+engines are not built in yet ([issue
 #9](https://github.com/PyDataBlog/simstring_rs/issues/9) tracks direct file
 loading). The `Database` trait exists so you *can* plug a different backend;
 queries only need read access to the trait.

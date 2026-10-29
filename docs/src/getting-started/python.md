@@ -32,7 +32,8 @@ print(searcher.search("appl", 0.7))
 # ['apple', 'apply']
 ```
 
-Invalid thresholds (`0.0` or above `1.0`) raise
+Invalid thresholds (zero, negative values, values above `1.0`, NaN, and
+infinity) raise
 `simstring_rust.errors.SearchError`, which derives from `ValueError`.
 
 ## Modules

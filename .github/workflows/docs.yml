@@ -40,9 +40,6 @@ jobs:
       - name: Configure Pages
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: actions/configure-pages@v5
-        with:
-          # Creates the Pages site on first deploy if the token has permission.
-          enablement: true
 
       - name: Upload Pages artifact
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'

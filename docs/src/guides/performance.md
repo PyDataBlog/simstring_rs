@@ -29,9 +29,8 @@ depending on `alpha` and `n`.
 
 - Rust: each thread's join state is lazily allocated scratch (reused across
   queries); two searchers in two threads never share it.
-  Very large searches (roughly ≥ 100k strings and ≥ 4 size groups in the
-  corpus) fan out with Rayon internally; smaller ones run on the calling
-  thread only.
+  Searches with at least 100,000 indexed strings and more than four eligible
+  size groups fan out with Rayon internally; others run on the calling thread.
 - Python: `Searcher.search` / `ranked_search` **release the GIL** while the
   Rust join runs, so `ThreadPoolExecutor` workers genuinely run in parallel
   on the same database. The executor snippet:

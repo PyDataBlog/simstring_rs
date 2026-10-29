@@ -6,6 +6,8 @@ render non-empty ``__doc__`` strings, so ``help(simstring_rust...)`` is
 never blank.
 """
 
+import doctest
+
 import simstring_rust
 import simstring_rust.database
 import simstring_rust.errors
@@ -44,7 +46,7 @@ class TestExtractorDocstrings:
         extractor = simstring_rust.extractors.CharacterNgrams
         assert_doc(extractor, "CharacterNgrams")
         assert_doc(extractor.apply, "CharacterNgrams.apply")
-        assert "n" in extractor.__doc__
+        assert "Window length" in extractor.__doc__
         assert "$h1" in extractor.__doc__  # includes a worked example
 
     def test_word_ngrams(self):
@@ -79,7 +81,6 @@ class TestMeasureDocstrings:
 
 class TestDatabaseDocstrings:
     def test_hash_db(self):
-        db = None
         extractor = simstring_rust.extractors.CharacterNgrams(2, "$")
         db = simstring_rust.database.HashDb
         assert_doc(db, "HashDb")
@@ -108,3 +109,16 @@ class TestSearcherDocstrings:
         assert_doc(searcher.ranked_search, "Searcher.ranked_search")
         assert "alpha" in searcher.search.__doc__
         assert "SearchError" in searcher.search.__doc__
+
+
+def test_python_docstring_examples():
+    parser = doctest.DocTestParser()
+    runner = doctest.DocTestRunner()
+    for cls in (
+        simstring_rust.extractors.CustomExtractor,
+        simstring_rust.searcher.Searcher,
+    ):
+        test = parser.get_doctest(cls.__doc__, {}, cls.__name__, None, None)
+        assert test.examples
+        runner.run(test)
+    assert runner.failures == 0

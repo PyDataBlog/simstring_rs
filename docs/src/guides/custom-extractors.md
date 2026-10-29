@@ -91,9 +91,11 @@ custom = CustomExtractor(LowerBigrams())      # or drive HashDb with it
 ```
 
 Pass the `CustomExtractor` into `HashDb(...)` instead of `CharacterNgrams` and
-every insert/query will use it. Errors raised inside `apply` propagate to the
-call site (a search panicking at the Rust boundary prints the Python-side
-traceback and re-raises).
+every insert/query will use it. Calling `CustomExtractor.apply` directly
+propagates errors from the wrapped callable. During database insertion or
+search, an error in the callable or its returned iterable prints the original
+traceback and raises `pyo3_runtime.PanicException` instead. This exception
+derives from `BaseException`, not `Exception`.
 
 ## When extractors change
 

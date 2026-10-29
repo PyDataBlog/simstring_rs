@@ -16,7 +16,8 @@ Code, tests, manifests, and workflows are authoritative. If this file disagrees 
 them, update this file in the same PR. Update it when public behavior, validation
 commands, key paths, or the release/CI process changes. Prefer stable invariants and
 links over copied version-specific details. Keep this file focused on workflow and
-contracts; detailed API and release documentation belongs in README or rustdoc.
+contracts; detailed API and release documentation belongs in README, CONTRIBUTING.md,
+the end-user guide, or rustdoc.
 
 ## Project
 

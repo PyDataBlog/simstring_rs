@@ -35,7 +35,7 @@ Add `simstring_rust` to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-simstring_rust = "0.3.0" # change version accordingly
+simstring_rust = "0.6.0" # replace with the latest published version
 ```
 
 For the latest features, you can add the master branch by specifying the Git repository:
@@ -167,13 +167,13 @@ the Python package version from Cargo, so crates.io and PyPI share one version.
 Ordinary merges update the proposed release and run CI. Registry publishing is
 driven by Release Please's `release_created` output.
 
-The [configuration](release-please-config.json) and manifest start from
-`v0.3.5-beta.1`. The `prerelease` versioning strategy with `prerelease: false`
-promotes beta/RC versions to stable versions. With the pending feature changes,
-the first release is **`0.4.0`**. Subsequent versions follow Conventional Commits:
+The [configuration](release-please-config.json) and
+[manifest](.release-please-manifest.json) drive release versioning from the latest
+release. The `prerelease` versioning strategy with `prerelease: false`
+promotes beta/RC versions to stable versions. Versions follow Conventional Commits:
 `fix` and `perf` bump the patch, `feat` bumps the minor, and breaking changes bump
-the minor while the project is below `1.0.0`. Include the
-[Rust API migration](#rust-api-migration) when reviewing the first release notes.
+the minor while the project is below `1.0.0`. Include migration notes when a release
+contains breaking API changes.
 
 ### Repository setup
 
@@ -240,6 +240,9 @@ machine, before and after the ScanCount and per-feature posting index changes:
 ## Contributing
 
 Contributions are welcome! Please open an issue or submit a pull request on GitHub.
+
+Contributors using coding agents should start with [AGENTS.md](AGENTS.md) for repository
+layout, behavioral contracts, acceptance criteria, and validation steps.
 
 Use [Conventional Commits](https://www.conventionalcommits.org/) for PR titles,
 for example `fix(search): handle empty queries` or `feat(bindings): add an extractor`.

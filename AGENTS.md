@@ -3,10 +3,12 @@
 This file is the entry point for coding agents working in this repository. It describes
 how to scope changes, preserve existing behavior, and validate work.
 
-For user-facing usage, release details, and API migration notes, use [README.md](README.md).
-`Cargo.toml`, `pyproject.toml`, `release-please-config.json`, and
-`.release-please-manifest.json` are authoritative for release versioning and toolchain
-settings; the workflows in `.github/workflows/` are authoritative for CI checks.
+For user-facing usage, start with [README.md](README.md); contributor setup, release
+details, and benchmark procedures live in [CONTRIBUTING.md](CONTRIBUTING.md), and the
+end-user guide is under `docs/src/`. `Cargo.toml`, `pyproject.toml`,
+`release-please-config.json`, and `.release-please-manifest.json` are authoritative for
+release versioning and toolchain settings; the workflows in `.github/workflows/` are
+authoritative for CI checks.
 
 ## Keeping this file current
 
@@ -14,7 +16,8 @@ Code, tests, manifests, and workflows are authoritative. If this file disagrees 
 them, update this file in the same PR. Update it when public behavior, validation
 commands, key paths, or the release/CI process changes. Prefer stable invariants and
 links over copied version-specific details. Keep this file focused on workflow and
-contracts; detailed API and release documentation belongs in README or rustdoc.
+contracts; detailed API and release documentation belongs in README, CONTRIBUTING.md,
+the end-user guide, or rustdoc.
 
 ## Project
 
@@ -35,11 +38,15 @@ builds the Python package. The public Rust and Python APIs must remain aligned.
 | `tests/test_search_corpus.rs` | Search checks against the benchmark corpus |
 | `tests/` | Focused behavior and snapshot tests |
 | `tests/python/` | Python binding tests |
+| `tests/python/test_docstrings.py` | Python docstring coverage guard |
 | `tests/fixtures/` | Versioned snapshot compatibility fixtures |
 | `tests/test_python_integration.rs` | Ignored helper that builds a wheel and runs `tests/python/` |
 | `examples/` | Basic and persistence examples for Rust and Python |
 | `benches/` | Rust benchmarks, persistence and release-regression checks, corpus data, and the cross-language harness |
-| `.github/workflows/` | CI, wheel builds, coverage, release, and PR-title validation |
+| `docs/src/` | mdBook end-user guide sources |
+| `book.toml` | mdBook configuration |
+| `CONTRIBUTING.md` | Contributor setup, CI commands, release process, and benchmark procedures |
+| `.github/workflows/` | CI, wheel builds, docs Pages deployment, coverage, release, and PR-title validation |
 
 ## Ground rules
 
@@ -151,10 +158,13 @@ this file when the workflow changes.
 cargo fmt --all -- --check
 cargo clippy -- -D warnings
 cargo test
-cargo doc --no-deps --document-private-items
+RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --document-private-items
 cargo run --example basic --release
 cargo run --example persistence --release
 ```
+
+For documentation-site changes, install mdBook 0.5+ (`cargo install mdbook`) and run
+`mdbook build` from the repository root.
 
 Install `uv` using its standalone installer, `pipx`, or your package manager. Do not
 install it into an externally managed system Python. Then use a clean virtual environment
@@ -192,6 +202,7 @@ output directory and an environment with Maturin installed.
 | Python API or binding behavior | `src/python/mod.rs`, `tests/python/`, `examples/python_basic.py`, and README when public |
 | Search, measure, or database behavior | Reference/corpus tests and any affected invariants above |
 | Snapshot format or persistence behavior | `tests/test_persistence.rs`, `tests/python/test_persistence.py`, versioned fixtures, README save/load docs, and persistence examples |
+| Documentation site or public API docs | `docs/src/`, `README.md`, `CONTRIBUTING.md`, Rust/Python docstrings, `tests/python/test_docstrings.py`, and `mdbook build` |
 | Performance work | Reproducible benchmark comparison, release regression check when relevant, and no regressions in correctness tests |
 | Release or CI configuration | Explain the need and preserve the existing Release Please and TestPyPI/PyPI flow |
 

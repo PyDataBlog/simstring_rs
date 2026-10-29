@@ -23,6 +23,9 @@ MANIFEST
 .cache
 .pytest_cache
 .hypothesis
+# mdBook build output
+/book
+
 /target
 Session.vim
 .vscode/

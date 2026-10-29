@@ -63,6 +63,11 @@ class TestSimstringBindings:
         results_lower_thresh = self.searcher.search("apple", 0.6)
         assert results_lower_thresh == ["apple", "apply"]
 
+    def test_documentation_quickstart(self):
+        db = HashDb(CharacterNgrams(2, "$"))
+        db.insert("apple")
+        assert Searcher(db, Cosine()).search("appl", 0.7) == ["apple"]
+
     def test_search_error_on_invalid_threshold(self):
         with pytest.raises(SearchError, match=r"Invalid threshold: 1\.1"):
             self.searcher.search("test", 1.1)

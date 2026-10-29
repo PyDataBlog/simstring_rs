@@ -20,20 +20,28 @@ type FeatureIdV1 = u32;
 #[derive(Debug, Error)]
 #[non_exhaustive]
 pub enum PersistenceError {
+    /// The snapshot could not be read or written.
     #[error(transparent)]
     Io(#[from] io::Error),
+    /// `file_name` was not a single file name.
     #[error("file_name must be a single filename")]
     InvalidFileName,
+    /// The database's feature extractor does not support snapshots.
     #[error("this feature extractor does not support snapshots")]
     UnsupportedExtractor,
+    /// The snapshot uses an unsupported format version.
     #[error("unsupported snapshot version: {0}")]
     UnsupportedVersion(u32),
+    /// The snapshot contents are malformed.
     #[error("invalid snapshot: {0}")]
     InvalidSnapshot(&'static str),
+    /// The snapshot payload could not be encoded or decoded.
     #[error("invalid snapshot encoding: {0}")]
     Codec(#[from] postcard::Error),
+    /// Memory for the restored snapshot could not be allocated.
     #[error("cannot allocate snapshot: {0}")]
     Allocation(#[from] TryReserveError),
+    /// The feature dictionary could not be restored.
     #[error("cannot restore feature dictionary: {0}")]
     Interner(#[from] lasso::LassoError),
 }

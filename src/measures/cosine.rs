@@ -1,6 +1,15 @@
 use super::Measure;
 use crate::database::Database;
 
+/// Cosine similarity between the two feature sets: `common / (x_len *
+/// y_len).sqrt()`, computed from the sizes of the (unique) feature sets and
+/// the size of their intersection.
+///
+/// One of the classic SimString measures: size differences between the two
+/// feature sets are penalized less than [`Dice`](super::Dice) but more than
+/// [`Overlap`](super::Overlap). Any empty side scores `0.0`, unlike
+/// [`Dice`](super::Dice) / [`Jaccard`](super::Jaccard) /
+/// [`Overlap`](super::Overlap), which return `1.0` for two empty sets.
 #[derive(Default, Clone, Copy)]
 pub struct Cosine;
 

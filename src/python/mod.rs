@@ -180,7 +180,7 @@ impl FeatureExtractor for PyFeatureExtractor {
 /// Examples:
 ///     >>> CharacterNgrams(2, '$').apply('hello')
 ///     ['$h1', 'he1', 'el1', 'll1', 'lo1', 'o$1']
-#[pyclass(name = "CharacterNgrams", skip_from_py_object)]
+#[pyclass(name = "CharacterNgrams")]
 #[derive(Clone)]
 struct PyCharacterNgrams(CharacterNgrams);
 
@@ -226,7 +226,7 @@ impl PyCharacterNgrams {
 /// Examples:
 ///     >>> WordNgrams(2, ' ', '_').apply('green apples')
 ///     ['_ green1', 'green apples1', 'apples _1']
-#[pyclass(name = "WordNgrams", skip_from_py_object)]
+#[pyclass(name = "WordNgrams")]
 #[derive(Clone)]
 struct PyWordNgrams(WordNgrams);
 
@@ -277,7 +277,7 @@ impl PyWordNgrams {
 ///     >>> extractor = CustomExtractor(LowerBigrams())
 ///     >>> extractor.apply('Some Custom Text')
 ///     ['some|custom1', 'custom|text1']
-#[pyclass(name = "CustomExtractor", skip_from_py_object)]
+#[pyclass(name = "CustomExtractor")]
 #[derive(Clone)]
 struct PyCustomExtractor(CustomExtractorInner);
 
@@ -369,7 +369,7 @@ impl Measure for PyMeasure {
 ///
 /// A balanced default that penalizes size differences moderately. An empty
 /// side always scores ``0.0``.
-#[pyclass(name = "Cosine", skip_from_py_object)]
+#[pyclass(name = "Cosine")]
 #[derive(Clone, Copy)]
 struct PyCosine;
 #[pymethods]
@@ -384,7 +384,7 @@ impl PyCosine {
 ///
 /// The default measure of the original SimString paper. Two empty feature
 /// sets are defined as perfectly similar (``1.0``).
-#[pyclass(name = "Dice", skip_from_py_object)]
+#[pyclass(name = "Dice")]
 #[derive(Clone, Copy)]
 struct PyDice;
 #[pymethods]
@@ -399,7 +399,7 @@ impl PyDice {
 ///
 /// Use it to fall back from threshold-based fuzzy matching to a hard
 /// membership probe on feature sets.
-#[pyclass(name = "ExactMatch", skip_from_py_object)]
+#[pyclass(name = "ExactMatch")]
 #[derive(Clone, Copy)]
 struct PyExactMatch;
 #[pymethods]
@@ -414,7 +414,7 @@ impl PyExactMatch {
 ///
 /// The strictest set measure — intersection over union — good when only
 /// strongly related strings should surface. Two empty sets are ``1.0``.
-#[pyclass(name = "Jaccard", skip_from_py_object)]
+#[pyclass(name = "Jaccard")]
 #[derive(Clone, Copy)]
 struct PyJaccard;
 #[pymethods]
@@ -430,7 +430,7 @@ impl PyJaccard {
 /// The most permissive measure: any string whose feature set fully contains
 /// the query's scores ``1.0``, regardless of extra features — useful for
 /// substring and containment style retrieval.
-#[pyclass(name = "Overlap", skip_from_py_object)]
+#[pyclass(name = "Overlap")]
 #[derive(Clone, Copy)]
 struct PyOverlap;
 #[pymethods]

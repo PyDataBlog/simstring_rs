@@ -82,7 +82,7 @@ impl FeatureExtractor for PyFeatureExtractor {
     }
 }
 
-#[pyclass(name = "CharacterNgrams", skip_from_py_object)]
+#[pyclass(name = "CharacterNgrams")]
 #[derive(Clone)]
 struct PyCharacterNgrams(CharacterNgrams);
 
@@ -104,7 +104,7 @@ impl PyCharacterNgrams {
     }
 }
 
-#[pyclass(name = "WordNgrams", skip_from_py_object)]
+#[pyclass(name = "WordNgrams")]
 #[derive(Clone)]
 struct PyWordNgrams(WordNgrams);
 
@@ -126,7 +126,7 @@ impl PyWordNgrams {
     }
 }
 
-#[pyclass(name = "CustomExtractor", skip_from_py_object)]
+#[pyclass(name = "CustomExtractor")]
 #[derive(Clone)]
 struct PyCustomExtractor(CustomExtractorInner);
 
@@ -205,7 +205,7 @@ impl Measure for PyMeasure {
     }
 }
 
-#[pyclass(name = "Cosine", skip_from_py_object)]
+#[pyclass(name = "Cosine")]
 #[derive(Clone, Copy)]
 struct PyCosine;
 #[pymethods]
@@ -216,7 +216,7 @@ impl PyCosine {
     }
 }
 
-#[pyclass(name = "Dice", skip_from_py_object)]
+#[pyclass(name = "Dice")]
 #[derive(Clone, Copy)]
 struct PyDice;
 #[pymethods]
@@ -227,7 +227,7 @@ impl PyDice {
     }
 }
 
-#[pyclass(name = "ExactMatch", skip_from_py_object)]
+#[pyclass(name = "ExactMatch")]
 #[derive(Clone, Copy)]
 struct PyExactMatch;
 #[pymethods]
@@ -238,7 +238,7 @@ impl PyExactMatch {
     }
 }
 
-#[pyclass(name = "Jaccard", skip_from_py_object)]
+#[pyclass(name = "Jaccard")]
 #[derive(Clone, Copy)]
 struct PyJaccard;
 #[pymethods]
@@ -249,7 +249,7 @@ impl PyJaccard {
     }
 }
 
-#[pyclass(name = "Overlap", skip_from_py_object)]
+#[pyclass(name = "Overlap")]
 #[derive(Clone, Copy)]
 struct PyOverlap;
 #[pymethods]

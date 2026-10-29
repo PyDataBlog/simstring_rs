@@ -82,8 +82,9 @@ Not yet — see
 [issue #102](https://github.com/PyDataBlog/simstring_rs/issues/102).
 
 **Why does `help(...)` look blank for some items?**
-It shouldn't be: all public items ship docstrings as of the 0.5.x series. If
-you find a blank `help` entry, report it with the wheel version — it's a bug.
+It shouldn't be: every public item in the current source tree has a docstring.
+If a released wheel shows a blank `help` entry, report it with the wheel
+version — it's a bug.
 
 **Does search release the GIL?**
 Yes. `ThreadPoolExecutor`-driven queries run truly in parallel on large

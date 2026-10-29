@@ -13,13 +13,14 @@
 //! [pypi]: https://pypi.org/project/simstring-rust/
 
 use crate::{
-    database::{Database, HashDb},
-    extractors::{CharacterNgrams, FeatureExtractor, WordNgrams},
+    database::{Database, HashDb, PersistenceError},
+    extractors::{CharacterNgrams, ExtractorConfig, FeatureExtractor, WordNgrams},
     measures::{Cosine, Dice, ExactMatch, Jaccard, Measure, Overlap},
     search::{SearchError as RustSearchError, Searcher as RustSearcher},
 };
 use pyo3::create_exception;
 use pyo3::prelude::*;
+use std::path::PathBuf;
 use std::sync::Arc;
 
 /// Docstring of the root `simstring_rust` module.
@@ -142,6 +143,14 @@ enum PyFeatureExtractor {
 }
 
 impl FeatureExtractor for PyFeatureExtractor {
+    fn persistence_config(&self) -> Option<ExtractorConfig> {
+        match self {
+            Self::Character(extractor) => extractor.persistence_config(),
+            Self::Word(extractor) => extractor.persistence_config(),
+            Self::Custom(_) => None,
+        }
+    }
+
     fn visit_features(&self, text: &str, visitor: &mut dyn FnMut(&str)) {
         match self {
             PyFeatureExtractor::Character(e) => e.visit_features(text, visitor),
@@ -458,6 +467,21 @@ struct PyHashDb {
     db: HashDb,
 }
 
+impl From<PersistenceError> for PyErr {
+    fn from(error: PersistenceError) -> Self {
+        match error {
+            PersistenceError::Io(error) => error.into(),
+            PersistenceError::UnsupportedExtractor => {
+                pyo3::exceptions::PyTypeError::new_err(error.to_string())
+            }
+            PersistenceError::Allocation(_) => {
+                pyo3::exceptions::PyMemoryError::new_err(error.to_string())
+            }
+            _ => pyo3::exceptions::PyValueError::new_err(error.to_string()),
+        }
+    }
+}
+
 #[pymethods]
 impl PyHashDb {
     /// See the class docstring for parameter details.
@@ -492,6 +516,39 @@ impl PyHashDb {
     /// Subsequent IDs restart from zero.
     fn clear(&mut self) {
         self.db.clear();
+    }
+
+    /// Saves the full index to an existing directory, atomically replacing
+    /// ``file_name`` after a successful write.
+    ///
+    /// Args:
+    ///     path: Existing directory that will contain the snapshot.
+    ///     file_name: Single file name, not a path.
+    ///
+    /// Raises:
+    ///     OSError: If the directory or file cannot be written.
+    ///     ValueError: If the snapshot is invalid or ``file_name`` is not a
+    ///         single file name.
+    ///     TypeError: If the database uses an unsupported extractor.
+    fn save_to_file(&self, py: Python<'_>, path: PathBuf, file_name: PathBuf) -> PyResult<()> {
+        py.detach(|| self.db.save_to_file(path, file_name))
+            .map_err(Into::into)
+    }
+
+    /// Restores a mutable database and its built-in extractor from a snapshot.
+    ///
+    /// Args:
+    ///     path: Directory containing the snapshot.
+    ///     file_name: Snapshot file name, not a path.
+    ///
+    /// Raises:
+    ///     OSError: If the snapshot cannot be read.
+    ///     ValueError: If the snapshot is invalid or ``file_name`` is not a
+    ///         single file name.
+    #[staticmethod]
+    fn load_from_file(py: Python<'_>, path: PathBuf, file_name: PathBuf) -> PyResult<Self> {
+        let db = py.detach(|| HashDb::load_from_file(path, file_name))?;
+        Ok(Self { db })
     }
 
     /// Returns a copy of all indexed strings in insertion order (index ``i``

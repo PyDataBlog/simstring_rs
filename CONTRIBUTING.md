@@ -5,6 +5,9 @@ setup, the commands CI runs, and the release process. For usage questions see
 the [project guide](https://pydatablog.github.io/simstring_rs/) or open an
 [issue](https://github.com/PyDataBlog/simstring_rs/issues).
 
+Coding agents should start with [AGENTS.md](AGENTS.md) for repository layout,
+behavioral contracts, acceptance criteria, and validation steps.
+
 ## Prerequisites
 
 - Rust toolchain 1.89+ (edition 2024), via [rustup](https://rustup.rs/)
@@ -40,7 +43,7 @@ Every PR is checked with (see [`.github/workflows/test.yml`](.github/workflows/t
 | `cargo test` | unit, integration, and doc tests |
 | `RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --document-private-items` | docs build, broken links, missing docs |
 | `maturin build --release --locked` + `pytest tests/python/ -vv` | Python bindings |
-| `cargo run --example basic` and `python examples/python_basic.py` | examples still run |
+| `cargo run --example basic --release`, `cargo run --example persistence --release`, and the Python examples | examples still run |
 
 Please run `cargo fmt --all`, `cargo test`, and the Python suite before
 pushing. Benchmarks cost extra CI time; they run separately on the `benchmark`
@@ -112,11 +115,13 @@ version.
 Ordinary merges update the proposed release and run CI. Registry publishing is
 driven by Release Please's `release_created` output.
 
-The [configuration](release-please-config.json) and manifest start from
-`v0.3.5-beta.1`. The `prerelease` versioning strategy with `prerelease: false`
-promotes beta/RC versions to stable versions. Subsequent versions follow
-Conventional Commits: `fix` and `perf` bump the patch, `feat` bumps the minor,
-and breaking changes bump the minor while the project is below `1.0.0`.
+The [configuration](release-please-config.json) and
+[manifest](.release-please-manifest.json) drive release versioning from the
+latest release. The `prerelease` versioning strategy with `prerelease: false`
+promotes beta/RC versions to stable versions. Versions follow Conventional
+Commits: `fix` and `perf` bump the patch, `feat` bumps the minor, and breaking
+changes bump the minor while the project is below `1.0.0`. Include migration
+notes when a release contains breaking API changes.
 
 ### Repository setup (maintainers only)
 
@@ -155,6 +160,24 @@ cargo bench --bench bench    # end-to-end corpus search
 cargo bench --bench micro    # search micro benchmarks (published numbers)
 cargo bench --bench insert   # insertion throughput
 ```
+
+The CI job summary and benchmark PR comment also report Rust and Python
+database build, save, and load medians, snapshot sizes, and sample counts for
+both corpora with 2-, 3-, and 4-grams. Run
+`cargo bench --bench persistence -- --json` (Rust) or
+`python benches/bench_persistence.py` (Python bindings) for the persistence
+measurements in machine-readable form.
+
+CI also checks insert and unranked Cosine search against the latest stable
+published crate, rebuilding release and PR sources with matching settings for
+Rust and Python. It uses company names, character/word 2–4 grams, and
+thresholds 0.6/0.9. After three paired runs, cases slower by more than 5% are
+rechecked: confirmed >5% warns and confirmed >10% fails. The median and every
+recheck pair must exceed the threshold. Correctness mismatches and benchmark
+errors fail immediately. Raw samples and build metadata are uploaded as the
+`release-regression` artifact, with results in the existing benchmark comment.
+Run `.venv/bin/python benches/check_release.py --baseline 0.6.0` locally;
+Maturin must be installed, and each run needs a fresh `--output` directory.
 
 ## Getting help
 

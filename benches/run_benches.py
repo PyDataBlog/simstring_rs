@@ -1,8 +1,26 @@
 import json
 import subprocess
+import sys
 from pathlib import Path
 
 from compare_benches import compare_benchmarks
+
+
+def run_persistence_benchmark(benches_dir):
+    results = []
+    for command in [
+        ["cargo", "bench", "--locked", "--bench", "persistence", "--", "--json"],
+        [sys.executable, str(benches_dir / "bench_persistence.py")],
+    ]:
+        process = subprocess.run(
+            command,
+            cwd=benches_dir.parent,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        results.extend(json.loads(process.stdout))
+    return results
 
 
 def run_benchmarks():
@@ -33,6 +51,8 @@ def run_benchmarks():
         results.extend(json.loads(process.stdout))
     else:
         print(f"Error running rust bench: {process.stderr}")
+
+    results.extend(run_persistence_benchmark(benches_dir))
 
     # Run Ruby benchmark
     process = subprocess.run(

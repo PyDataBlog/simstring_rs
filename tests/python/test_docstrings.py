@@ -85,6 +85,8 @@ class TestDatabaseDocstrings:
         assert_doc(db, "HashDb")
         assert_doc(db.insert, "HashDb.insert")
         assert_doc(db.clear, "HashDb.clear")
+        assert_doc(db.save_to_file, "HashDb.save_to_file")
+        assert_doc(db.load_from_file, "HashDb.load_from_file")
         assert_doc(db.strings, "HashDb.strings")
         # The instance-dependent dunder: exercised on a real database.
         database = db(extractor)

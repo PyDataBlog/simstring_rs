@@ -17,6 +17,25 @@ def get_system_specs():
     }
 
 
+def persistence_table(group):
+    columns = {
+        "parameters.dataset": "dataset",
+        "parameters.ngram_size": "ngram_size",
+        "language": "language",
+        "stats.build_ms": "build (ms)",
+        "stats.save_ms": "save (ms)",
+        "stats.load_ms": "load (ms)",
+        "stats.size_mib": "snapshot (MiB)",
+        "stats.iterations": "iterations",
+    }
+    return (
+        group.sort_values(["parameters.dataset", "parameters.ngram_size", "language"])
+        .loc[:, list(columns)]
+        .rename(columns=columns)
+        .to_markdown(index=False, floatfmt=".2f")
+    )
+
+
 def compare_benchmarks():
     try:
         print("--- Starting benchmark comparison ---")
@@ -57,6 +76,17 @@ def compare_benchmarks():
 
             for benchmark, group in df.groupby("benchmark"):
                 f.write(f"### {str(benchmark).capitalize()} Benchmark\n")
+
+                if benchmark == "persistence":
+                    f.write(
+                        "\nsimstring-rust native and Python bindings; medians of seven runs after one warm-up, "
+                        "with a warm file cache. Build excludes source-file I/O; save includes "
+                        "file sync and atomic replacement; load includes snapshot I/O, "
+                        "checksum verification, and index validation.\n\n"
+                    )
+                    f.write(persistence_table(group))
+                    f.write("\n\n")
+                    continue
 
                 param_cols = [
                     col.replace("parameters.", "")

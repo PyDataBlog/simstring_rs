@@ -26,6 +26,7 @@ and **Python package** [`simstring-rust`](https://pypi.org/project/simstring-rus
 - ✅ Unicode support (extractors operate on characters, not bytes)
 - ✅ Thread-safe concurrent searches, in Rust and from Python
 - ✅ Five standard similarity measures: Dice, Jaccard, Cosine, Overlap, ExactMatch
+- ✅ Versioned snapshot save/load shared by Rust and Python
 - [ ] Building databases directly from text files
   ([issue #9](https://github.com/PyDataBlog/simstring_rs/issues/9))
 - [ ] MeCab-based tokenizer support ([issue #44](https://github.com/PyDataBlog/simstring_rs/issues/44))
@@ -39,7 +40,7 @@ Requires Rust 1.89 or newer (edition 2024). Python bindings support Python
 
 ```toml
 [dependencies]
-simstring_rust = "0.5"
+simstring_rust = "0.6"
 ```
 
 ### Python
@@ -116,6 +117,63 @@ print(searcher.search("appl", 0.7))
 A fuller tour — including custom extractors and error handling — is in
 [`examples/python_basic.py`](https://github.com/PyDataBlog/simstring_rs/blob/main/examples/python_basic.py).
 Every exported class and method also documents itself: try `help(simstring_rust)`.
+
+## Saving and loading databases
+
+Snapshots store the full index and its `CharacterNgrams` or `WordNgrams`
+configuration. Loading preserves insertion order and duplicates, and returns a
+mutable database without extracting corpus features again.
+
+```rust
+use simstring_rust::{CharacterNgrams, HashDb};
+use std::sync::Arc;
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let mut db = HashDb::new(Arc::new(CharacterNgrams::new(2, "$")));
+    db.insert("hello".into());
+    db.save_to_file(".", "names.ssdb")?;
+    let mut restored = HashDb::load_from_file(".", "names.ssdb")?;
+    restored.insert("help".into());
+    Ok(())
+}
+```
+
+```python
+from pathlib import Path
+from simstring_rust.database import HashDb
+from simstring_rust.extractors import CharacterNgrams
+
+db = HashDb(CharacterNgrams(2, "$"))
+db.insert("hello")
+db.save_to_file(Path("."), "names.ssdb")
+restored = HashDb.load_from_file(Path("."), "names.ssdb")
+restored.insert("help")
+```
+
+The directory must exist and `file_name` must be a single filename. Saving
+atomically replaces an existing file after a successful write. Rust returns
+`PersistenceError`; Python raises `OSError` for filesystem errors, `ValueError`
+for invalid snapshots or filenames, and `TypeError` for unsupported extractors.
+
+The v1 format uses a versioned header, CRC32 checksum, and Postcard payload with
+portable integer IDs. Rust and Python share the format across supported
+platforms. Unsupported format versions are rejected explicitly; v1 readers and
+extractor semantics are covered by shared compatibility fixtures. Loading
+temporarily holds the encoded payload and decoded data in memory.
+
+Feature IDs use 32-bit `Spur` keys in memory and zero-based `u32` values in v1
+snapshots. The maximum feature ID is `u32::MAX - 1`, allowing up to
+**4,294,967,295 distinct interned features**. This limit applies to the shared
+feature dictionary. String IDs and explicit sizes/counts use `u64` in snapshots
+and are converted to native `usize` values with capacity checks when loaded.
+
+Custom Rust extractors default to unsupported persistence. A wrapper that
+exactly matches a built-in extractor can delegate `persistence_config()`;
+arbitrary custom behavior and Python `CustomExtractor` objects cannot be saved.
+
+See `examples/persistence.rs` and `examples/python_persistence.py` for runnable
+examples. Measure indexing, saving, and loading with
+`cargo bench --bench persistence -- unigrams` (medians of seven runs; warm file cache).
 
 ## Core concepts
 
@@ -204,6 +262,9 @@ for the exact `FeatureExtractor`, `Database`, and `Measure` changes.
 Bug reports, feature requests, and pull requests are welcome — start with
 [CONTRIBUTING.md](https://github.com/PyDataBlog/simstring_rs/blob/main/CONTRIBUTING.md)
 for the local setup, test commands, and release process.
+
+Contributors using coding agents should start with [AGENTS.md](AGENTS.md) for repository
+layout, behavioral contracts, acceptance criteria, and validation steps.
 
 ## License
 

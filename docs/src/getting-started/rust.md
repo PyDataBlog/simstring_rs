@@ -7,7 +7,7 @@ database, insert strings, and search. Rust 1.89+ (edition 2024) is required.
 
 ```toml
 [dependencies]
-simstring_rust = "0.5"
+simstring_rust = "0.6"
 ```
 
 ## Index and query

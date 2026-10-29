@@ -1,4 +1,5 @@
 use crate::FeatureExtractor;
+use crate::extractors::ExtractorConfig;
 use rustc_hash::FxHashMap;
 
 /// Word *n*-gram extractor over a token sequence.
@@ -61,6 +62,14 @@ impl Default for WordNgrams {
 }
 
 impl FeatureExtractor for WordNgrams {
+    fn persistence_config(&self) -> Option<ExtractorConfig> {
+        Some(ExtractorConfig::Word {
+            n: self.n,
+            splitter: self.splitter.clone(),
+            padder: self.padder.clone(),
+        })
+    }
+
     fn visit_features(&self, text: &str, visitor: &mut dyn FnMut(&str)) {
         if self.n == 0 {
             return;

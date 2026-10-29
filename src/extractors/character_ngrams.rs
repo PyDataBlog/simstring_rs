@@ -1,4 +1,5 @@
 use crate::FeatureExtractor;
+use crate::extractors::ExtractorConfig;
 use rustc_hash::FxHashMap;
 
 /// Character *n*-gram extractor, the default feature scheme for SimString.
@@ -56,6 +57,10 @@ impl CharacterNgrams {
             padding: endmarker.repeat(n.saturating_sub(1)),
         }
     }
+
+    pub(crate) fn from_padding(n: usize, padding: String) -> Self {
+        Self { n, padding }
+    }
 }
 
 impl Default for CharacterNgrams {
@@ -65,6 +70,13 @@ impl Default for CharacterNgrams {
 }
 
 impl FeatureExtractor for CharacterNgrams {
+    fn persistence_config(&self) -> Option<ExtractorConfig> {
+        Some(ExtractorConfig::Character {
+            n: self.n,
+            padding: self.padding.clone(),
+        })
+    }
+
     fn feature_count_hint(&self, text: &str) -> usize {
         // Exact for ASCII text; an upper bound otherwise, as bytes >= characters.
         if self.n == 0 {

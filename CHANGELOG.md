@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.0](https://github.com/PyDataBlog/simstring_rs/compare/v0.5.0...v0.6.0) (2026-10-27)
+
+
+### Features
+
+* **database:** add HashDb binary snapshots ([#108](https://github.com/PyDataBlog/simstring_rs/issues/108)) ([1c27c36](https://github.com/PyDataBlog/simstring_rs/commit/1c27c36bf6d05c6de0f1029e3f3e8e8ab4efe871))
+
 ## [0.5.0](https://github.com/PyDataBlog/simstring_rs/compare/v0.4.0...v0.5.0) (2026-10-18)
 
 

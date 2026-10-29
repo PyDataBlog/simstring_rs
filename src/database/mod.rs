@@ -86,4 +86,4 @@ pub trait Database: Send + Sync {
 /// Index a corpus with [`new`](HashDb::new) and
 /// [`insert`](HashDb::insert); then hand it to a
 /// [`Searcher`](crate::Searcher) for queries.
-pub use hashdb::HashDb;
+pub use hashdb::{HashDb, PersistenceError};

@@ -52,9 +52,9 @@ features matches nothing, so those conventions only surface when calling
 ## Custom measures (Rust only)
 
 Implement the `Measure` trait: `min_feature_size`, `max_feature_size`, and
-`minimum_common_feature_count` are conservative pruning bounds
-(`n >= min`) used to skip impossible buckets — compute tight mathematical
-bounds and round them **outwards** (`f64::next_down`/`next_up`, like the
-built-ins) — and `similarity_from_counts` is the exact verdict. The
+`minimum_common_feature_count` are conservative pruning bounds used to skip
+impossible buckets — compute tight mathematical bounds and round them
+**outwards** (`f64::next_down`/`next_up`, like the built-ins) — and
+`similarity_from_counts` is the exact verdict. The
 `similarity(x, y)` trait method is a convenience over two explicit feature
 slices and is not used by search itself.

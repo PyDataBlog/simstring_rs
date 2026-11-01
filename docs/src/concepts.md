@@ -57,7 +57,7 @@ overlap join:
 
 1. Extract the query's features (unknown-to-corpus ones count in
    denominators, never in overlaps).
-2. Ask the measure for the compression of viable feature-set sizes and the
+2. Ask the measure for the range of viable feature-set sizes and the
    smallest viable intersection for each size.
 3. Join each remaining size's posting lists, shortest first, counting
    how many query features each candidate string shares.

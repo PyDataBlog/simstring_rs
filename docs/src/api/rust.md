@@ -21,7 +21,7 @@ insert refers to `HashDb.strings[i]` until `clear()`.
 
 | Module | Items |
 |---|---|
-| [`database`](https://docs.rs/simstring_rust/simstring_rust/database/index.html) | `Database` trait (storage contract), `HashDb` (in-memory inverted index) |
+| [`database`](https://docs.rs/simstring_rust/simstring_rust/database/index.html) | `Database` trait (storage contract), `HashDb` (in-memory inverted index with `save_to_file` / `load_from_file`), `PersistenceError` |
 | [`extractors`](https://docs.rs/simstring_rust/simstring_rust/extractors/index.html) | `FeatureExtractor` trait, `CharacterNgrams`, `WordNgrams` |
 | [`measures`](https://docs.rs/simstring_rust/simstring_rust/measures/index.html) | `Measure` trait plus `Cosine`, `Dice`, `ExactMatch`, `Jaccard`, `Overlap` |
 | [`search`](https://docs.rs/simstring_rust/simstring_rust/search/index.html) | `Searcher` over `&dyn Database` and `SearchError::InvalidThreshold` |

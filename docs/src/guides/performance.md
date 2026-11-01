@@ -4,11 +4,14 @@
 
 The heavy work is the overlap join: for each viable feature-set size, the
 engine gathers posting lists and counts shared features (ScanCount-style),
-skipping pairs that cannot possibly satisfy `alpha`. Publish-worthy numbers
-are in [BENCHMARKS.md](https://github.com/PyDataBlog/simstring_rs/blob/main/BENCHMARKS.md);
-a typical x86_64 machine sees 0.3–4.2 ms for 100 queries over the ~5.8k-entry
-name corpus (`benches/data/company_names.txt`) with character bigrams,
-depending on `alpha` and `n`.
+skipping pairs that cannot possibly satisfy `alpha`. Two kinds of numbers are
+useful. In-process `cargo bench --bench micro` medians for 100 queries over the
+~5.8k-entry name corpus (`benches/data/company_names.txt`) with character
+bigrams are 0.3–4.2 ms on a typical x86_64 machine, depending on `alpha` and
+`n`. The cross-language harness behind
+[BENCHMARKS.md](https://github.com/PyDataBlog/simstring_rs/blob/main/BENCHMARKS.md)
+times whole 100-query runs including setup, so its figures are higher for the
+same corpus.
 
 ## Throughput knobs
 

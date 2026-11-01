@@ -68,6 +68,24 @@ class TestSimstringBindings:
         db.insert("apple")
         assert Searcher(db, Cosine()).search("appl", 0.7) == ["apple"]
 
+    def test_documentation_ranked_quickstart(self):
+        db = HashDb(CharacterNgrams(2, "$"))
+        for name in ["apple", "apply", "apples"]:
+            db.insert(name)
+        searcher = Searcher(db, Cosine())
+        assert searcher.ranked_search("appl", 0.7) == [
+            ("apple", 0.7302967433402214),
+            ("apply", 0.7302967433402214),
+        ]
+
+    def test_documentation_extractor_examples(self):
+        assert CharacterNgrams(2, "$").apply("hello") == [
+            "$h1", "he1", "el1", "ll1", "lo1", "o$1"
+        ]
+        assert WordNgrams(2, " ", "_").apply("green apples") == [
+            "_ green1", "green apples1", "apples _1"
+        ]
+
     def test_search_error_on_invalid_threshold(self):
         with pytest.raises(SearchError, match=r"Invalid threshold: 1\.1"):
             self.searcher.search("test", 1.1)

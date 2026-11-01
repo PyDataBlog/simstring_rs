@@ -52,6 +52,8 @@ Both search methods return `Result<_, SearchError>`: an
 - The extractor given to `HashDb::new` is used for queries too: features come
   from the same scheme and the same interner.
 - Full signatures: [docs.rs/simstring_rust](https://docs.rs/simstring_rust).
-  Corpus-retrieved references such as dup-free insert and clearing behavior are
-  in [concepts](../concepts.md); the runnable setup lives in
+  Cross-references such as duplicate insertion and clearing behavior are in
+  [concepts](../concepts.md); saving and loading databases is covered in the
+  [README](https://github.com/PyDataBlog/simstring_rs#saving-and-loading-databases);
+  the runnable setup lives in
   [`examples/basic.rs`](https://github.com/PyDataBlog/simstring_rs/blob/main/examples/basic.rs).

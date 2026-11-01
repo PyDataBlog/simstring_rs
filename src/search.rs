@@ -1,3 +1,14 @@
+//! Threshold search engines over a [`Database`].
+//!
+//! [`Searcher`] prunes candidate strings with the measure's bounds and joins
+//! the inverted postings (ScanCount-style), scoring survivors with a
+//! [`Measure`]. The result sets are exact
+//! w.r.t. the requested threshold: every string whose similarity is at least
+//! `alpha` is returned, no fabricated ones.
+//!
+//! Implementation note: the join uses per-thread scratch buffers, so
+//! concurrent searchers may run in parallel without synchronization.
+
 use crate::Database;
 use crate::database::StringId;
 use crate::measures::Measure;
@@ -21,23 +32,81 @@ thread_local! {
 }
 
 #[derive(Error, Debug, PartialEq)]
+/// Errors that can occur during a search.
 pub enum SearchError {
+    /// The threshold falls outside the valid range. Alpha must satisfy
+    /// `0.0 < alpha <= 1.0`: `0.0` in effect means "return every string in
+    /// the corpus", which is nearly always a mistake, so it is rejected
+    /// explicitly. The payload is the rejected value.
     #[error(
         "Search threshold alpha must be between 0.0 (exclusive) and 1.0 (inclusive), but was {0}"
     )]
     InvalidThreshold(f64),
 }
 
+/// Threshold-based search engine over a [`Database`], parameterized by a
+/// [`Measure`].
+///
+/// A searcher does not own state beyond the borrowed database and the scoring
+/// rule, so one database can service many searchers (with different measures)
+/// concurrently, and each [`search`](Searcher::search)
+/// / [`ranked_search`](Searcher::ranked_search) call is safe to run from
+/// multiple threads at once. Very large databases may be joined in parallel
+/// internally (Rayon), which stays transparent to callers.
+///
+/// # Example
+///
+/// ```
+/// use std::sync::Arc;
+///
+/// use simstring_rust::database::HashDb;
+/// use simstring_rust::extractors::CharacterNgrams;
+/// use simstring_rust::measures::Cosine;
+/// use simstring_rust::search::{SearchError, Searcher};
+///
+/// let mut db = HashDb::new(Arc::new(CharacterNgrams::new(2, "$")));
+/// db.insert("hello".to_owned());
+/// db.insert("help".to_owned());
+/// db.insert("world".to_owned());
+///
+/// let searcher = Searcher::new(&db, Cosine);
+///
+/// // Unranked: sorted ascending, no scores.
+/// assert_eq!(searcher.search("hell", 0.5)?, ["hello", "help"]);
+///
+/// // Ranked: sorted from most to least similar.
+/// let ranked = searcher.ranked_search("hell", 0.5)?;
+/// assert_eq!(ranked.first().map(|(text, _)| *text), Some("hello"));
+///
+/// // Alpha 0.0 is invalid, as is anything outside 0..=1.
+/// assert_eq!(
+///     searcher.search("hell", 0.0),
+///     Err(SearchError::InvalidThreshold(0.0))
+/// );
+/// # Ok::<(), SearchError>(())
+/// ```
 pub struct Searcher<'db, M: Measure> {
     db: &'db dyn Database,
     measure: M,
 }
 
 impl<'db, M: Measure> Searcher<'db, M> {
+    /// Creates a searcher over `db` scoring candidates with `measure`. The
+    /// database borrows from `db`; the searcher does not take ownership.
     pub fn new(db: &'db dyn Database, measure: M) -> Self {
         Self { db, measure }
     }
 
+    /// Returns every indexed string at least `alpha`-similar to
+    /// `query_string`, sorted ascending. Scores are not part of the result;
+    /// use [`ranked_search`](Searcher::ranked_search) for the sorted,
+    /// scored variant.
+    ///
+    /// Similarity is measured by the searcher's [`Measure`], with the
+    /// database's own feature extractor used on the query. `alpha` must be
+    /// in `(0.0, 1.0]`; anything else is
+    /// [`SearchError::InvalidThreshold`]. A query that extracts no features
+    /// matches nothing. Duplicate insertions all appear in the result.
     pub fn search(&self, query_string: &str, alpha: f64) -> Result<Vec<&str>, SearchError> {
         let candidates = self.search_candidates(query_string, alpha)?;
         let mut results: Vec<_> = candidates
@@ -48,6 +117,13 @@ impl<'db, M: Measure> Searcher<'db, M> {
         Ok(results)
     }
 
+    /// Returns `(string, score)` pairs sorted from the most to the least
+    /// similar, ties broken ascending by string. The score is the value of
+    /// the searcher's [`Measure`] for the pair, guaranteed `>= alpha`.
+    ///
+    /// As with [`search`](Searcher::search): `alpha` must be within
+    /// `(0.0, 1.0]`, feature-less queries match nothing, and duplicates are
+    /// returned per-insertion.
     pub fn ranked_search(
         &self,
         query_string: &str,

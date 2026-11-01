@@ -1,6 +1,14 @@
 use super::Measure;
 use crate::database::Database;
 
+/// Exact membership check rather than a graded similarity: `1.0` when the two
+/// feature sets are of equal size and fully shared (i.e. identical), `0.0`
+/// otherwise.
+///
+/// Search still uses threshold-aware bounds — min/max feature size both pin
+/// to the query's size and any candidate must share *all* of the query's
+/// features — so recall behavior is identical to set equality after the
+/// extractor's qualification rules.
 #[derive(Default, Clone, Copy)]
 pub struct ExactMatch;
 

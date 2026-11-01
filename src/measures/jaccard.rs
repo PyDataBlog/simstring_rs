@@ -1,6 +1,12 @@
 use super::Measure;
 use crate::database::Database;
 
+/// Jaccard similarity of the two feature sets:
+/// `common / (x_len + y_len - common)` — the intersection over the union.
+///
+/// The strictest of the set measures: it punishes features that appear in
+/// only one side's set. Two empty sets are `1.0`; exactly one empty side
+/// scores `0.0`.
 #[derive(Default, Clone, Copy)]
 pub struct Jaccard;
 

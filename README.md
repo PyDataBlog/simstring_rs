@@ -1,91 +1,122 @@
 # simstring_rust
 
 [![Build Status](https://github.com/PyDataBlog/simstring_rs/actions/workflows/CI.yml/badge.svg)](https://github.com/PyDataBlog/simstring_rs/actions)
+[![Project docs](https://img.shields.io/badge/docs-user%20guide-blue.svg)](https://pydatablog.github.io/simstring_rs/)
+[![docs.rs](https://docs.rs/simstring_rust/badge.svg)](https://docs.rs/simstring_rust)
 [![Crates.io](https://img.shields.io/crates/v/simstring_rust.svg)](https://crates.io/crates/simstring_rust)
 [![PyPI version](https://badge.fury.io/py/simstring-rust.svg)](https://badge.fury.io/py/simstring-rust)
-[![Python versions](https://img.shields.io/badge/python-3.10%E2%80%933.15-blue.svg)](pyproject.toml)
-[![Documentation](https://docs.rs/simstring_rust/badge.svg)](https://docs.rs/simstring_rust)
+[![Python versions](https://img.shields.io/badge/python-3.10%E2%80%933.15-blue.svg)](https://github.com/PyDataBlog/simstring_rs/blob/main/pyproject.toml)
 [![Rust](https://img.shields.io/badge/rust-1.89%2B-blue.svg?maxAge=3600)](https://github.com/PyDataBlog/simstring_rs)
 [![Codecov](https://img.shields.io/codecov/c/github/PyDataBlog/simstring_rs?token=XJM8O8TD4U)](https://codecov.io/gh/PyDataBlog/simstring_rs)
 
-A native Rust implementation of the CPMerge algorithm, designed for approximate string matching. This crate is particularly useful for natural language processing tasks that require the retrieval of strings/texts from very large corpora (big amounts of texts). Currently, this crate supports both character and word-based N-grams feature generation, with plans to allow custom user-defined feature generation methods.
+A native Rust implementation of the [SimString](https://www.chokkan.org/software/simstring/)
+algorithm (CPMerge): fast, exact threshold-based approximate string matching.
+Give it a corpus of strings and a query, and it returns **every** string at
+least `alpha`-similar to the query — no missing matches, no fabricated ones.
+Built for natural language processing tasks that need fuzzy lookup over very
+large corpora, in Rust or via Python bindings.
+
+The same engine ships as **Rust crate** [`simstring_rust`](https://docs.rs/simstring_rust)
+and **Python package** [`simstring-rust`](https://pypi.org/project/simstring-rust/).
 
 ## Features
 
-- ✅ Fast algorithm for string matching
-- ✅ 100% exact retrieval
-- ✅ Support for Unicode
-- [ ] Support for building databases directly from text files
-- [ ] Mecab-based tokenizer support
-
-## Supported String Similarity Measures
-
-- ✅ Dice coefficient
-- ✅ Jaccard coefficient
-- ✅ Cosine coefficient
-- ✅ Overlap coefficient
-- ✅ Exact match
+- ✅ Exact threshold-based retrieval for large corpora (CPMerge / ScanCount join)
+- ✅ Character n-gram and word n-gram feature extractors, plus custom extractors
+- ✅ Unicode support (extractors operate on characters, not bytes)
+- ✅ Thread-safe concurrent searches, in Rust and from Python
+- ✅ Five standard similarity measures: Dice, Jaccard, Cosine, Overlap, ExactMatch
+- ✅ Versioned snapshot save/load shared by Rust and Python
+- [ ] Building databases directly from text files
+  ([issue #9](https://github.com/PyDataBlog/simstring_rs/issues/9))
+- [ ] MeCab-based tokenizer support ([issue #44](https://github.com/PyDataBlog/simstring_rs/issues/44))
 
 ## Installation
 
-Requires Rust 1.89 or newer (edition 2024). Python bindings support Python 3.10+.
-See [Rust API migration](#rust-api-migration) for the read-only query engine's trait changes.
+Requires Rust 1.89 or newer (edition 2024). Python bindings support Python
+3.10–3.15 on Linux, macOS, and Windows.
 
-Add `simstring_rust` to your `Cargo.toml`:
+### Rust
 
 ```toml
 [dependencies]
-simstring_rust = "0.6.0" # replace with the latest published version
+simstring_rust = "0.6"
 ```
 
-For the latest features, you can add the master branch by specifying the Git repository:
+### Python
+
+```bash
+pip install simstring-rust
+```
+
+## Quick start (Rust)
+
+```rust
+use std::sync::Arc;
+
+use simstring_rust::database::HashDb;
+use simstring_rust::extractors::CharacterNgrams;
+use simstring_rust::measures::Cosine;
+use simstring_rust::Searcher;
+
+fn main() {
+    // 1. Choose a feature extractor and create an empty database.
+    let mut db = HashDb::new(Arc::new(CharacterNgrams::new(2, "$")));
+
+    // 2. Index some strings (duplicates stay distinct entries).
+    db.insert("hello".to_string());
+    db.insert("help".to_string());
+    db.insert("world".to_string());
+
+    // 3. Search: strings whose similarity >= alpha, best first.
+    let searcher = Searcher::new(&db, Cosine);
+    let results = searcher.ranked_search("hell", 0.5).unwrap();
+    for (text, score) in results {
+        println!("- {text} ({score:.4})");
+    }
+    // - hello (0.7303)
+    // - help (0.6000)
+}
+```
+
+The equivalent runnable examples live in [`examples/basic.rs`](https://github.com/PyDataBlog/simstring_rs/blob/main/examples/basic.rs)
+(`cargo run --example basic`).
+
+For the latest features, you can track the development branch:
 
 ```toml
 [dependencies]
 simstring_rust = { git = "https://github.com/PyDataBlog/simstring_rs.git", branch = "main" }
 ```
 
-Note: Using the master branch may include experimental features and potential breakages. Use with caution!
+Note: the git branch may include experimental features and breakages. Use with caution, and pin a released version for stability.
 
-To revert to a stable version, ensure your Cargo.toml specifies a specific version number instead of the Git repository.
+## Quick start (Python)
 
-## Usage
+```python
+from simstring_rust.database import HashDb
+from simstring_rust.extractors import CharacterNgrams
+from simstring_rust.measures import Cosine
+from simstring_rust.searcher import Searcher
 
-Here is a basic example of how to use simstring_rs in your Rust project:
+db = HashDb(CharacterNgrams(2, "$"))
+for name in ["apple", "apply", "apples"]:
+    db.insert(name)
 
-```Rust
-use simstring_rust::database::HashDb;
-use simstring_rust::extractors::CharacterNgrams;
-use simstring_rust::measures::Cosine;
-use simstring_rust::Searcher;
+searcher = Searcher(db, Cosine())
 
-use std::sync::Arc;
+# Ranked results: (text, score) pairs, best first.
+print(searcher.ranked_search("appl", 0.7))
+# [('apple', 0.7302967433402214), ('apply', 0.7302967433402214)]
 
-fn main() {
-    // 1. Setup the database
-    let feature_extractor = Arc::new(CharacterNgrams::new(2, "$"));
-    let mut db = HashDb::new(feature_extractor);
-
-    // 2. Index some strings
-    db.insert("hello".to_string());
-    db.insert("help".to_string());
-    db.insert("halo".to_string());
-    db.insert("world".to_string());
-
-    // 3. Search for strings
-    let measure = Cosine;
-    let searcher = Searcher::new(&db, measure);
-    let query = "hell";
-    let alpha = 0.5;
-
-    if let Ok(results) = searcher.ranked_search(query, alpha) {
-        println!("Found {} results for query '{}'", results.len(), query);
-        for (item, score) in results {
-            println!("- Match: '{}', Score: {:.4}", item, score);
-        }
-    }
-}
+# Unranked results: plain strings, sorted ascending.
+print(searcher.search("appl", 0.7))
+# ['apple', 'apply']
 ```
+
+A fuller tour — including custom extractors and error handling — is in
+[`examples/python_basic.py`](https://github.com/PyDataBlog/simstring_rs/blob/main/examples/python_basic.py).
+Every exported class and method also documents itself: try `help(simstring_rust)`.
 
 ## Saving and loading databases
 
@@ -144,89 +175,67 @@ See `examples/persistence.rs` and `examples/python_persistence.py` for runnable
 examples. Measure indexing, saving, and loading with
 `cargo bench --bench persistence -- unigrams` (medians of seven runs; warm file cache).
 
-## Releasing
+## Core concepts
 
-[Release Please](https://github.com/googleapis/release-please) manages stable
-releases from `main`. Its Rust strategy updates `Cargo.toml`, `Cargo.lock`,
-`CHANGELOG.md`, and `.release-please-manifest.json` in a release PR. Maturin derives
-the Python package version from Cargo, so crates.io and PyPI share one version.
+Matching works over *feature sets* produced by a **feature extractor**:
 
-### Release process
+| Extractor | Configuration | Features of `"green apples"` |
+|---|---|---|
+| `CharacterNgrams(n, endmarker)` | windows of `n` characters over the end-marked text | with `(2, "$")`: `$g1`, `gr1`, `re1`, `ee1`, `en1`, `n 1`, ` a1`, `ap1`, … |
+| `WordNgrams(n, splitter, padder)` | windows of `n` padded tokens | with `(2, " ", "_")`: `_ green1`, `green apples1`, `apples _1` |
+| `CustomExtractor(callable)` | any object with `apply(text) -> Iterable[str]` | whatever the callable yields, suffix-qualified automatically |
 
-1. Squash-merge changes into `main` using Conventional Commit PR titles. After CI
-   passes, Release Please creates or updates the pending release PR.
-2. Review the proposed version and release notes after the release PR passes CI.
-   **Merging this PR is the approval to release.**
-3. After CI passes, Release Please creates the `vMAJOR.MINOR.PATCH` tag and GitHub
-   release. The shared [build/test workflow](.github/workflows/test.yml) runs against
-   that exact release commit, producing separately named release wheel artifacts.
-4. The crate is verified and published to crates.io, followed by the tested release
-   wheels to PyPI. TestPyPI receives the same wheels independently of production
-   publishing. Publication is automatic after the release tests pass.
+Repeated features are qualified with a 1-based occurrence counter (`aa1`,
+`aa2`, …), so every feature is unique within one text. Extractors operate on
+Unicode characters (not bytes) — `"héllo"` behaves exactly as its six
+characters suggest.
 
-Ordinary merges update the proposed release and run CI. Registry publishing is
-driven by Release Please's `release_created` output.
+The database stores each string's feature set **grouped by feature-set size**,
+which lets search skip whole size buckets that cannot reach the threshold. A
+**similarity measure** scores the intersection of two feature sets:
 
-The [configuration](release-please-config.json) and
-[manifest](.release-please-manifest.json) drive release versioning from the latest
-release. The `prerelease` versioning strategy with `prerelease: false`
-promotes beta/RC versions to stable versions. Versions follow Conventional Commits:
-`fix` and `perf` bump the patch, `feat` bumps the minor, and breaking changes bump
-the minor while the project is below `1.0.0`. Include migration notes when a release
-contains breaking API changes.
+| Measure | Formula (x, y = set sizes, c = intersection) | Best for |
+|---|---|---|
+| `Cosine`    | `c / sqrt(x * y)`         | balanced generic search |
+| `Dice`      | `2 * c / (x + y)`         | the classic SimString default |
+| `Jaccard`   | `c / (x + y - c)`         | strict, high-precision retrieval |
+| `Overlap`   | `c / min(x, y)`           | substring/containment search |
+| `ExactMatch`| `1.0` iff sets are equal  | membership probes |
 
-### Repository setup
+`alpha` is the minimum similarity a result must have and must satisfy
+`0.0 < alpha <= 1.0` — outside that range, `search`/`ranked_search` raise
+`SearchError` (Rust: `SearchError::InvalidThreshold`). Higher values return
+fewer, closer matches; the exact retrieval guarantee means the answer set is
+always complete for the chosen threshold.
 
-- Install a release GitHub App on this repository with **Contents**, **Issues**,
-  and **Pull requests** read/write permissions. Add its App ID and private key as
-  repository secrets `RELEASE_APP_ID` and `RELEASE_APP_PRIVATE_KEY`. The App token
-  allows CI to run on the release PR that it creates.
-- Configure `main` to require the **CI** and **PR title** checks before merging.
-  Enable squash merging and use the PR title as the squash commit title so Release
-  Please can determine the version from the merged history.
-- Configure trusted publishers for `PyDataBlog/simstring_rs`, workflow **`CI.yml`**,
-  and environment **`testpypi`** on TestPyPI / **`pypi`** on PyPI. These environments
-  use automatic publishing, with no required reviewers.
-- Provide `CARGO_REGISTRY_TOKEN` with permission to publish `simstring_rust`.
+Behavior worth knowing:
 
-### Retrying publication
+- **Duplicates stay distinct.** Inserting a string twice yields two database
+  entries, both returned by searches.
+- **Unknown features count against the query.** Query features that never
+  appeared in the corpus contribute to similarity denominators but can never
+  add to an overlap, lowering scores.
+- **Empty queries match nothing.** A query that extracts no features returns
+  an empty result.
+- **Searches are concurrent-safe.** Rust `Searcher` uses no mutable state; the
+  Python bindings release the GIL during search and can be driven from
+  `ThreadPoolExecutor` workers.
 
-Use **Re-run failed jobs** on the original release workflow run. This reuses Release
-Please's outputs and the successful build artifacts. Already-published crate
-versions and wheel files are skipped. Check the publishing jobs to confirm that
-the packages are available in their registries.
+## Documentation
 
-## Rust API migration
+- **Project guide** (this documentation site): <https://pydatablog.github.io/simstring_rs/>
+- **Rust API reference**: <https://docs.rs/simstring_rust>
+- **Python API reference**: <https://pydatablog.github.io/simstring_rs/api/python.html>
+- **Changelog**: [CHANGELOG.md](https://github.com/PyDataBlog/simstring_rs/blob/main/CHANGELOG.md)
+- **Benchmarks**: [BENCHMARKS.md](https://github.com/PyDataBlog/simstring_rs/blob/main/BENCHMARKS.md)
 
-Version `0.4.0` introduces breaking changes for custom Rust trait implementations.
-The read-only query engine preserves the usual `HashDb` and `Searcher` calls,
-as well as Python method signatures. Custom Rust implementations need these updates:
+## Performance
 
-- **FeatureExtractor**: implement
-  `visit_features(&self, text: &str, visitor: &mut dyn FnMut(&str))`, emitting
-  occurrence-qualified features. The default `features` method interns, sorts,
-  and deduplicates them for insertion; search visits them without interning.
-- **Database**: `interner()` returns `&Rodeo` rather than a locked `Arc`.
-  `lookup_strings()` returns sorted, unique `Option<&[StringId]>` postings, and
-  `get_features()` returns `Option<&[Spur]>`. Implement `feature_sizes()` as a
-  sorted, unique slice of populated sizes. Each ID belongs to exactly one size
-  bucket; stored features must be sorted and unique, using the same interner.
-  Optionally override `visit_postings()` to enumerate one feature's postings across
-  a size range directly; the default calls `lookup_strings()` once per size.
-- **Measure**: implement `similarity_from_counts(x_len, y_len, common) -> f64`.
-  The default `similarity` intersects sorted feature sets and delegates to it.
-  Search uses counts directly, so this method must agree with the pruning bounds.
-
-Unknown query features still contribute to similarity denominators. Duplicate
-insertions remain distinct results, and queries with no features return no results.
-Both search methods now apply exact score filtering at threshold boundaries.
-
-## Search performance
-
-Most search time goes to gathering postings and counting overlaps.
-`cargo bench --bench micro` measures end-to-end search (100 queries over
-`benches/data/company_names.txt`, Cosine, minimum of 30 runs). Measured on one x86_64
-machine, before and after the ScanCount and per-feature posting index changes:
+Most search time goes to gathering postings and counting overlaps; the join
+prunes candidate feature sizes and skips pairs that cannot satisfy the
+threshold. Measured on one x86_64 machine (`cargo bench --bench micro`, 100
+queries over `benches/data/company_names.txt`, Cosine), before and after the
+ScanCount and per-feature posting index changes:
 
 | n-gram | alpha | before | now |
 |---|---|---|---|
@@ -237,49 +246,34 @@ machine, before and after the ScanCount and per-feature posting index changes:
 | 4 | 0.6 | 2.28 ms | 1.07 ms |
 | 4 | 0.9 | 0.46 ms | 0.32 ms |
 
+Cross-language comparisons (Rust, Python, Julia, Ruby, C++) live in
+[BENCHMARKS.md](https://github.com/PyDataBlog/simstring_rs/blob/main/BENCHMARKS.md),
+produced by [`benches/run_benches.py`](https://github.com/PyDataBlog/simstring_rs/blob/main/benches/run_benches.py).
+
+## Migrating from 0.3 / 0.4
+
+`0.4.0` reorganized the Rust traits under a read-only query engine; Python
+signatures are unchanged. See
+[the migration guide](https://pydatablog.github.io/simstring_rs/migration.html)
+for the exact `FeatureExtractor`, `Database`, and `Measure` changes.
+
 ## Contributing
 
-Contributions are welcome! Please open an issue or submit a pull request on GitHub.
+Bug reports, feature requests, and pull requests are welcome — start with
+[CONTRIBUTING.md](https://github.com/PyDataBlog/simstring_rs/blob/main/CONTRIBUTING.md)
+for the local setup, test commands, and release process.
 
-Contributors using coding agents should start with [AGENTS.md](AGENTS.md) for repository
-layout, behavioral contracts, acceptance criteria, and validation steps.
+Contributors using coding agents should start with
+[AGENTS.md](https://github.com/PyDataBlog/simstring_rs/blob/main/AGENTS.md) for
+repository layout, behavioral contracts, acceptance criteria, and validation steps.
 
-Use [Conventional Commits](https://www.conventionalcommits.org/) for PR titles,
-for example `fix(search): handle empty queries` or `feat(bindings): add an extractor`.
-Mark breaking changes with `!`, such as `refactor(api)!: change the Database trait`,
-and describe the migration in the PR. PR titles are checked automatically and
-become the squash commit titles used by Release Please.
-
-License
+## License
 
 This project is licensed under the MIT License.
 
-## Benchmarks
-
-The `benches/run_benches.py` harness compares several language bindings (Rust, Python, Julia, Ruby, C++).
-
-The CI job summary and benchmark PR comment also report Rust and Python database build,
-save, and load medians, snapshot sizes, and sample counts for both corpora with
-2-, 3-, and 4-grams. Run `cargo bench --bench persistence -- --json` (Rust) or
-`python benches/bench_persistence.py` (Python bindings) for the persistence
-measurements in machine-readable form.
-
-CI also checks insert and unranked Cosine search against the latest stable
-published crate, rebuilding release and PR sources with matching settings for
-Rust and Python. It uses company names, character/word 2–4 grams, and thresholds
-0.6/0.9. After three paired runs, cases slower by more than 5% are rechecked:
-confirmed >5% warns and confirmed >10% fails. The median and every recheck pair
-must exceed the threshold. Correctness mismatches and benchmark errors fail
-immediately. Raw samples and build metadata are uploaded as the
-`release-regression` artifact, with results in the existing benchmark comment.
-Run `.venv/bin/python benches/check_release.py --baseline 0.5.0` locally; Maturin
-must be installed, and each run needs a fresh `--output` directory.
-
-- `git`, `autoconf`, `automake`, `libtool`, `make`, `python`, `uv` and a C++ compiler (`g++`) to build the C++ CLI.
-
-The C++ sources are cloned into `benches/.simstring_cpp/` and a local copy of the `simstring` binary is installed
-under that directory. If you need to rebuild from scratch, remove `benches/.simstring_cpp/` before re-running the benchmark suite.
-
 ## Acknowledgements
 
-Inspired by the [SimString](https://www.chokkan.org/software/simstring/) project.
+Inspired by the [SimString](https://www.chokkan.org/software/simstring/)
+project by Naoki Okazaki and Yasuhito Asanuma, and the original CPMerge
+algorithm paper [SimString: A Fast and Flexible Method for Approximate String
+Matching](https://www.aclweb.org/anthology/D10-1044/) (Okazaki & Tsujii, 2010).
